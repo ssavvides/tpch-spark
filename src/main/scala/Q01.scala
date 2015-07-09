@@ -1,7 +1,5 @@
 package main.scala
 
-import org.apache.spark.SparkConf
-import org.apache.spark.SparkContext
 import org.apache.spark.sql.functions.count
 import org.apache.spark.sql.functions.sum
 import org.apache.spark.sql.functions.avg
