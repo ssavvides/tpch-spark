@@ -15,7 +15,8 @@ class Q04 extends TpchQuery {
 
     val forders = order.filter($"o_orderdate" >= "1993-07-01" && $"o_orderdate" < "1993-10-01")
     val flineitems = lineitem.filter($"l_commitdate" < $"l_receiptdate")
-      .select($"l_orderkey").distinct
+      .select($"l_orderkey")
+      .distinct
 
     val res = flineitems.join(forders, $"l_orderkey" === forders("o_orderkey"))
       .groupBy($"o_orderpriority")

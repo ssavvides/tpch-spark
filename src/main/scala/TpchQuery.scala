@@ -117,6 +117,7 @@ abstract class TpchQuery {
    *  implemented in children classes and hold the actual query
    */
   def execute(): Unit
+
 }
 
 object TpchQuery {
@@ -125,17 +126,12 @@ object TpchQuery {
    * Execute query reflectively
    */
   def executeQuery(queryNo: Int): Unit = {
+    assert(queryNo >= 1 && queryNo <= 22, "Invalid query number")
     Class.forName(f"main.scala.Q${queryNo}%02d").newInstance.asInstanceOf[{ def execute }].execute
   }
 
-  def executeAllQueries: Unit = {
-    (1 to 22).foreach(executeQuery)
-  }
-
   def main(args: Array[String]): Unit = {
-    if (args.length == 0)
-      executeAllQueries
-    else if (args.length == 1)
+    if (args.length == 1)
       executeQuery(args(0).toInt)
     else
       throw new RuntimeException("Invalid number of arguments")

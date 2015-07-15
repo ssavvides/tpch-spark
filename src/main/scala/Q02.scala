@@ -13,15 +13,18 @@ class Q02 extends TpchQuery {
 
   override def execute(): Unit = {
 
-    val europe = region.filter(region("r_name") === "EUROPE")
-      .join(nation, region("r_regionkey") === nation("n_regionkey"))
-      .join(supplier, nation("n_nationkey") === supplier("s_nationkey"))
+    val europe = region.filter($"r_name" === "EUROPE")
+      .join(nation, $"r_regionkey" === nation("n_regionkey"))
+      .join(supplier, $"n_nationkey" === supplier("s_nationkey"))
       .join(partsupp, supplier("s_suppkey") === partsupp("ps_suppkey"))
+    //.select($"ps_partkey", $"ps_supplycost", $"s_acctbal", $"s_name", $"n_name", $"s_address", $"s_phone", $"s_comment")
 
     val brass = part.filter(part("p_size") === 15 && part("p_type").endsWith("BRASS"))
       .join(europe, europe("ps_partkey") === $"p_partkey")
+    //.cache
 
-    val minCost = brass.groupBy(brass("ps_partkey")).agg(min("ps_supplycost").as("min"))
+    val minCost = brass.groupBy(brass("ps_partkey"))
+      .agg(min("ps_supplycost").as("min"))
 
     val res = brass.join(minCost, brass("ps_partkey") === minCost("ps_partkey"))
       .filter(brass("ps_supplycost") === minCost("min"))
