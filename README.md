@@ -22,7 +22,7 @@ location the of the input data and where the output should be saved.
 You can then run a query using:
 
 ```
-spark-submit --class "main.scala.TpchQuery" --master MASTER target/scala-2.10/spark-examples-project_2.10-1.0.jar ##
+spark-submit --class "main.scala.TpchQuery" --master MASTER target/scala-2.10/spark-tpc-h-queries_2.10-1.0.jar ##
 ```
 
 where ## is the number of the query to run e.g 1, 2, ..., 22
