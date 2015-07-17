@@ -24,7 +24,7 @@ class Q13 extends TpchQuery {
       .agg(count($"o_custkey").as("custdist"))
       .sort($"custdist".desc, $"c_count".desc)
 
-    res.collect().foreach(println)
+    outputDF(res)
 
   }
 

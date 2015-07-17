@@ -30,7 +30,7 @@ class Q11 extends TpchQuery {
       .join(sumRes, $"part_value" > mul01($"total_value"))
       .sort($"part_value".desc)
 
-    res.collect().foreach(println)
+    outputDF(res)
 
   }
 

@@ -41,7 +41,7 @@ class Q19 extends TpchQuery {
       .select(decrease($"l_extendedprice", $"l_discount").as("volume"))
       .agg(sum("volume"))
 
-    res.collect().foreach(println)
+    outputDF(res)
 
   }
 

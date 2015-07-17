@@ -31,7 +31,7 @@ class Q03 extends TpchQuery {
       .sort($"revenue".desc, $"o_orderdate")
       .limit(10)
 
-    res.collect().foreach(println)
+    outputDF(res)
 
   }
 

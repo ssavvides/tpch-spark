@@ -30,7 +30,7 @@ class Q15 extends TpchQuery {
       .select($"s_suppkey", $"s_name", $"s_address", $"s_phone", $"total")
       .sort($"s_suppkey")
 
-    res.collect().foreach(println)
+    outputDF(res)
 
   }
 

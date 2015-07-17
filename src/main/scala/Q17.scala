@@ -31,7 +31,7 @@ class Q17 extends TpchQuery {
       .filter($"l_quantity" < $"avg_quantity")
       .agg(sum($"l_extendedprice") / 7.0)
 
-    res.collect().foreach(println)
+    outputDF(res)
 
   }
 

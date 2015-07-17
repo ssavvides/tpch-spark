@@ -32,7 +32,7 @@ class Q02 extends TpchQuery {
       .sort($"s_acctbal".desc, $"n_name", $"s_name", $"p_partkey")
       .limit(100)
 
-    res.collect().foreach(println)
+    outputDF(res)
 
   }
 

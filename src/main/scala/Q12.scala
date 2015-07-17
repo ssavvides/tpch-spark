@@ -29,7 +29,7 @@ class Q12 extends TpchQuery {
       .agg(sum(highPriority($"o_orderpriority")), sum(lowPriority($"o_orderpriority")))
       .sort($"l_shipmode")
 
-    res.collect().foreach(println)
+    outputDF(res)
 
   }
 

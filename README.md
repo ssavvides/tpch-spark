@@ -16,6 +16,9 @@ First compile using:
 sbt package
 ```
 
+Make sure you set the INPUT_DIR and OUTPUT_DIR in TpchQuery class before compiling to point to the
+location the of the input data and where the output should be saved.
+
 You can then run a query using:
 
 ```
@@ -23,6 +26,9 @@ spark-submit --class "main.scala.TpchQuery" --master MASTER target/scala-2.10/sp
 ```
 
 where ## is the number of the query to run e.g 1, 2, ..., 22
+and MASTER specifies the spark-mode e.g local, yarn, standalone etc...
+
+
 
 ### Other Implementations
 

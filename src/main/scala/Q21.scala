@@ -50,42 +50,7 @@ class Q21 extends TpchQuery {
       .sort($"numwait".desc, $"s_name")
       .limit(100)
 
-    /*
-
-    val flineitem = lineitem.select($"l_suppkey", $"l_orderkey", $"l_receiptdate", $"l_commitdate")
-      .cache
-
-    val atLeast1 = flineitem.select($"l_orderkey", $"l_suppkey")
-      .groupBy($"l_orderkey")
-      .agg(countDistinct($"l_suppkey").as("suppkey_count"))
-      .filter($"suppkey_count" > 1)
-      .select($"l_orderkey".as("key"))
-
-    val exactly1 = flineitem.filter($"l_receiptdate" > $"l_commitdate")
-      .select($"l_orderkey", $"l_suppkey")
-      .join(atLeast1, $"l_orderkey" === atLeast1("key"))
-      .groupBy($"l_orderkey")
-      .agg(countDistinct($"l_suppkey").as("suppkey_count"))
-      .filter($"suppkey_count" === 1)
-      .select($"l_orderkey".as("key"))
-
-    val forder = order.select($"o_orderkey", $"o_orderstatus")
-      .filter($"o_orderstatus" === "F")
-
-    val fsupplier = supplier.select($"s_suppkey", $"s_nationkey", $"s_name")
-    val nat_supp = nation.filter($"n_name" === "SAUDI ARABIA")
-      .join(fsupplier, $"n_nationkey" === fsupplier("s_nationkey"))
-
-    val res = flineitem.join(exactly1, $"l_orderkey" === exactly1("key"))
-      .join(nat_supp, $"l_suppkey" === nat_supp("s_suppkey"))
-      .join(forder, $"l_orderkey" === forder("o_orderkey"))
-      .groupBy($"s_name")
-      .agg(count($"l_orderkey").as("numwait"))
-      .sort($"numwait".desc, $"s_name")
-      .limit(100)
-    */
-
-    res.collect().foreach(println)
+    outputDF(res)
 
   }
 

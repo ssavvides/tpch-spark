@@ -42,7 +42,7 @@ class Q08 extends TpchQuery {
       .agg(sum($"case_volume") / sum("volume"))
       .sort($"o_year")
 
-    res.collect().foreach(println)
+    outputDF(res)
 
   }
 

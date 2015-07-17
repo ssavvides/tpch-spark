@@ -37,7 +37,7 @@ class Q22 extends TpchQuery {
       .agg(count($"c_acctbal"), sum($"c_acctbal"))
       .sort($"cntrycode")
 
-    res.collect().foreach(println)
+    outputDF(res)
 
   }
 

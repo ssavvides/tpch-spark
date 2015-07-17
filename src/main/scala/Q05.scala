@@ -30,7 +30,7 @@ class Q05 extends TpchQuery {
       .agg(sum($"value").as("revenue"))
       .sort($"revenue".desc)
 
-    res.collect().foreach(println)
+    outputDF(res)
 
   }
 

@@ -39,7 +39,7 @@ class Q07 extends TpchQuery {
       .agg(sum($"volume").as("revenue"))
       .sort($"supp_nation", $"cust_nation", $"l_year")
 
-    res.collect().foreach(println)
+    outputDF(res)
 
   }
 

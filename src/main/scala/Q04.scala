@@ -23,7 +23,7 @@ class Q04 extends TpchQuery {
       .agg(count($"o_orderpriority"))
       .sort($"o_orderpriority")
 
-    res.collect().foreach(println)
+    outputDF(res)
 
   }
 

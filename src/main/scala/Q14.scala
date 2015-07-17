@@ -22,7 +22,7 @@ class Q14 extends TpchQuery {
       .select($"p_type", reduce($"l_extendedprice", $"l_discount").as("value"))
       .agg(sum(promo($"p_type", $"value")) * 100 / sum($"value"))
 
-    res.collect().foreach(println)
+    outputDF(res)
 
   }
 

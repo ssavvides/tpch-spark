@@ -35,7 +35,7 @@ class Q20 extends TpchQuery {
       .select($"s_name", $"s_address")
       .sort($"s_name")
 
-    res.collect().foreach(println)
+    outputDF(res)
 
   }
 

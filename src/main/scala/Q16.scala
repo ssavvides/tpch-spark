@@ -32,7 +32,7 @@ class Q16 extends TpchQuery {
       .agg(countDistinct($"ps_suppkey").as("supplier_count"))
       .sort($"supplier_count".desc, $"p_brand", $"p_type", $"p_size")
 
-    res.collect().foreach(println)
+    outputDF(res)
 
   }
 

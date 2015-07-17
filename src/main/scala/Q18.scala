@@ -28,7 +28,7 @@ class Q18 extends TpchQuery {
       .sort($"o_totalprice".desc, $"o_orderdate")
       .limit(100)
 
-    res.collect().foreach(println)
+    outputDF(res)
 
   }
 

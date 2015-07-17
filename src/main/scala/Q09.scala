@@ -32,7 +32,7 @@ class Q09 extends TpchQuery {
       .agg(sum($"amount"))
       .sort($"n_name", $"o_year".desc)
 
-    res.collect().foreach(println)
+    outputDF(res)
 
   }
 

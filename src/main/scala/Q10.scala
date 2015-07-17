@@ -30,7 +30,7 @@ class Q10 extends TpchQuery {
       .sort($"revenue".desc)
       .limit(20)
 
-    res.collect().foreach(println)
+    outputDF(res)
 
   }
 
