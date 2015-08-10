@@ -19,3 +19,4 @@ project/plugins/project/
 
 # tpch dbgen specific
 dbgen/*.tbl
+dbgen/*.o
