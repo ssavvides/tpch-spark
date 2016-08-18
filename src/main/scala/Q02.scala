@@ -4,12 +4,12 @@ import org.apache.spark.sql.functions.min
 
 /**
  * TPC-H Query 2
- * Savvas Savvides <ssavvides@us.ibm.com>
+ * Savvas Savvides <savvas@purdue.edu>
  *
  */
 class Q02 extends TpchQuery {
 
-  import sqlContext.implicits._
+  import spark.implicits._
 
   override def execute(): Unit = {
 

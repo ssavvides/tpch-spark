@@ -5,12 +5,12 @@ import org.apache.spark.sql.functions.udf
 
 /**
  * TPC-H Query 5
- * Savvas Savvides <ssavvides@us.ibm.com>
+ * Savvas Savvides <savvas@purdue.edu>
  *
  */
 class Q05 extends TpchQuery {
 
-  import sqlContext.implicits._
+  import spark.implicits._
 
   override def execute(): Unit = {
 
