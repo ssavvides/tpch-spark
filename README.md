@@ -1,6 +1,7 @@
 # tpch-spark
 
-TPC-H queries implemented in Spark using the DataFrames API (introduced in Spark 1.3.0)
+TPC-H queries implemented in Spark using the DataFrames API.
+Tested under Spark 2.0.0
 
 Savvas Savvides
 
@@ -22,7 +23,7 @@ location the of the input data and where the output should be saved.
 You can then run a query using:
 
 ```
-spark-submit --class "main.scala.TpchQuery" --master MASTER target/scala-2.10/spark-tpc-h-queries_2.10-1.0.jar ##
+spark-submit --class "main.scala.TpchQuery" --master MASTER target/scala-2.11/spark-tpc-h-queries_2.11-1.0.jar ##
 ```
 
 where ## is the number of the query to run e.g 1, 2, ..., 22
