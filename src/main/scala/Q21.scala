@@ -1,5 +1,7 @@
 package main.scala
 
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.countDistinct
 import org.apache.spark.sql.functions.max
 import org.apache.spark.sql.functions.count
@@ -12,9 +14,9 @@ import org.apache.spark.sql.functions.udf
  */
 class Q21 extends TpchQuery {
 
-  import spark.implicits._
-
-  override def execute(): Unit = {
+  override def execute(spark: SparkSession, schemaProvider: TpchSchemaProvider): DataFrame = {
+    import schemaProvider._
+    import spark.implicits._
 
     val fsupplier = supplier.select($"s_suppkey", $"s_nationkey", $"s_name")
 
@@ -35,7 +37,7 @@ class Q21 extends TpchQuery {
     val forder = order.select($"o_orderkey", $"o_orderstatus")
       .filter($"o_orderstatus" === "F")
 
-    val res = nation.filter($"n_name" === "SAUDI ARABIA")
+    nation.filter($"n_name" === "SAUDI ARABIA")
       .join(fsupplier, $"n_nationkey" === fsupplier("s_nationkey"))
       .join(flineitem, $"s_suppkey" === flineitem("l_suppkey"))
       .join(forder, $"l_orderkey" === forder("o_orderkey"))
@@ -49,9 +51,6 @@ class Q21 extends TpchQuery {
       .agg(count($"l_suppkey").as("numwait"))
       .sort($"numwait".desc, $"s_name")
       .limit(100)
-
-    outputDF(res)
-
   }
 
 }

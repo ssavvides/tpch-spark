@@ -1,5 +1,7 @@
 package main.scala
 
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.sum
 import org.apache.spark.sql.functions.udf
 
@@ -10,9 +12,9 @@ import org.apache.spark.sql.functions.udf
  */
 class Q09 extends TpchQuery {
 
-  import spark.implicits._
-
-  override def execute(): Unit = {
+  override def execute(spark: SparkSession, schemaProvider: TpchSchemaProvider): DataFrame = {
+    import schemaProvider._
+    import spark.implicits._
 
     val getYear = udf { (x: String) => x.substring(0, 4) }
     val expr = udf { (x: Double, y: Double, v: Double, w: Double) => x * (1 - y) - (v * w) }
@@ -22,7 +24,7 @@ class Q09 extends TpchQuery {
 
     val natSup = nation.join(supplier, $"n_nationkey" === supplier("s_nationkey"))
 
-    val res = linePart.join(natSup, $"l_suppkey" === natSup("s_suppkey"))
+    linePart.join(natSup, $"l_suppkey" === natSup("s_suppkey"))
       .join(partsupp, $"l_suppkey" === partsupp("ps_suppkey")
         && $"l_partkey" === partsupp("ps_partkey"))
       .join(order, $"l_orderkey" === order("o_orderkey"))
@@ -31,8 +33,6 @@ class Q09 extends TpchQuery {
       .groupBy($"n_name", $"o_year")
       .agg(sum($"amount"))
       .sort($"n_name", $"o_year".desc)
-
-    outputDF(res)
 
   }
 

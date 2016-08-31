@@ -1,5 +1,7 @@
 package main.scala
 
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.first
 import org.apache.spark.sql.functions.sum
 import org.apache.spark.sql.functions.udf
@@ -11,9 +13,9 @@ import org.apache.spark.sql.functions.udf
  */
 class Q20 extends TpchQuery {
 
-  import spark.implicits._
-
-  override def execute(): Unit = {
+  override def execute(spark: SparkSession, schemaProvider: TpchSchemaProvider): DataFrame = {
+    import schemaProvider._
+    import spark.implicits._
 
     val forest = udf { (x: String) => x.startsWith("forest") }
 
@@ -25,7 +27,7 @@ class Q20 extends TpchQuery {
     val nat_supp = supplier.select($"s_suppkey", $"s_name", $"s_nationkey", $"s_address")
       .join(fnation, $"s_nationkey" === fnation("n_nationkey"))
 
-    val res = part.filter(forest($"p_name"))
+    part.filter(forest($"p_name"))
       .select($"p_partkey").distinct
       .join(partsupp, $"p_partkey" === partsupp("ps_partkey"))
       .join(flineitem, $"ps_suppkey" === flineitem("l_suppkey") && $"ps_partkey" === flineitem("l_partkey"))
@@ -34,9 +36,6 @@ class Q20 extends TpchQuery {
       .join(nat_supp, $"ps_suppkey" === nat_supp("s_suppkey"))
       .select($"s_name", $"s_address")
       .sort($"s_name")
-
-    outputDF(res)
-
   }
 
 }

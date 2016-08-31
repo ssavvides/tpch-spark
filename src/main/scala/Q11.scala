@@ -1,5 +1,7 @@
 package main.scala
 
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.sum
 import org.apache.spark.sql.functions.udf
 
@@ -9,10 +11,9 @@ import org.apache.spark.sql.functions.udf
  *
  */
 class Q11 extends TpchQuery {
-
-  import spark.implicits._
-
-  override def execute(): Unit = {
+  override def execute(spark: SparkSession, schemaProvider: TpchSchemaProvider): DataFrame = {
+    import schemaProvider._
+    import spark.implicits._
 
     val mul = udf { (x: Double, y: Int) => x * y }
     val mul01 = udf { (x: Double) => x * 0.0001 }
@@ -26,12 +27,9 @@ class Q11 extends TpchQuery {
 
     val sumRes = tmp.agg(sum("value").as("total_value"))
 
-    val res = tmp.groupBy($"ps_partkey").agg(sum("value").as("part_value"))
+    tmp.groupBy($"ps_partkey").agg(sum("value").as("part_value"))
       .join(sumRes, $"part_value" > mul01($"total_value"))
       .sort($"part_value".desc)
-
-    outputDF(res)
-
   }
 
 }

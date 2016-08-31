@@ -1,5 +1,7 @@
 package main.scala
 
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.sum
 import org.apache.spark.sql.functions.udf
 
@@ -9,10 +11,9 @@ import org.apache.spark.sql.functions.udf
  *
  */
 class Q08 extends TpchQuery {
-
-  import spark.implicits._
-
-  override def execute(): Unit = {
+  override def execute(spark: SparkSession, schemaProvider: TpchSchemaProvider): DataFrame = {
+    import schemaProvider._
+    import spark.implicits._
 
     val getYear = udf { (x: String) => x.substring(0, 4) }
     val decrease = udf { (x: Double, y: Double) => x * (1 - y) }
@@ -29,7 +30,7 @@ class Q08 extends TpchQuery {
       join(fpart, $"l_partkey" === fpart("p_partkey"))
       .join(nat, $"l_suppkey" === nat("s_suppkey"))
 
-    val res = nation.join(fregion, $"n_regionkey" === fregion("r_regionkey"))
+    nation.join(fregion, $"n_regionkey" === fregion("r_regionkey"))
       .select($"n_nationkey")
       .join(customer, $"n_nationkey" === customer("c_nationkey"))
       .select($"c_custkey")
@@ -41,9 +42,6 @@ class Q08 extends TpchQuery {
       .groupBy($"o_year")
       .agg(sum($"case_volume") / sum("volume"))
       .sort($"o_year")
-
-    outputDF(res)
-
   }
 
 }
