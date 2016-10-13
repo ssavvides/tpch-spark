@@ -28,7 +28,8 @@ class Q12 extends TpchQuery {
       .join(order, $"l_orderkey" === order("o_orderkey"))
       .select($"l_shipmode", $"o_orderpriority")
       .groupBy($"l_shipmode")
-      .agg(sum(highPriority($"o_orderpriority")), sum(lowPriority($"o_orderpriority")))
+      .agg(sum(highPriority($"o_orderpriority")).as("sum_highorderpriority"),
+        sum(lowPriority($"o_orderpriority")).as("sum_loworderpriority"))
       .sort($"l_shipmode")
   }
 

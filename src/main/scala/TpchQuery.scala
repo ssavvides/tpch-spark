@@ -30,7 +30,7 @@ object TpchQuery {
     * Execute query reflectively
     */
   def executeQuery(queryNo: Int, spark: SparkSession, tpchSchemaProvider: TpchSchemaProvider, outputDir: String): Long = {
-    assert(queryNo >= 1 && queryNo <= 22, "Invalid query number")
+    assert(queryNo >= 1, "Invalid query number")
     val t0 = System.nanoTime()
     val query = Class.forName(f"main.scala.Q${queryNo}%02d").newInstance.asInstanceOf[TpchQuery]
     outputDF(query.execute(spark, tpchSchemaProvider), outputDir, escapeClassName(query.getClass.getName))
@@ -61,7 +61,18 @@ object TpchQuery {
     if (args.length < 1)
       throw new RuntimeException("Invalid number of arguments")
 
-    var queryNum = args(0).toInt
+    var queryNum = args(0)
+    var fromNum = -1
+    var toNum = -1
+
+    if (queryNum.contains("-")) {
+      val items = queryNum.split("-")
+      fromNum = items(0).toInt
+      toNum = items(1).toInt
+    } else {
+      toNum = queryNum.toInt
+    }
+
     if (args.length > 1)
       inputDir = args(1)
     if (args.length > 2)
@@ -72,18 +83,24 @@ object TpchQuery {
       if (args(3) == "cache")
         cache = true
 
-    val schemaProvider = new TpchSchemaProvider(spark, inputDir, cache)
+    var sql = false
+    if (args.length > 4)
+      if (args(4) == "sql")
+        sql = true
 
-    if (queryNum != 0) {
-      val elapsedTime = executeQuery(queryNum, spark, schemaProvider, outputDir)
-      println(f"Q${queryNum}%02d:" + elapsedTime)
+    val schemaProvider = new TpchSchemaProvider(spark, inputDir, cache, sql)
+
+
+    if (fromNum == -1) {
+      println(f"Q${toNum}%02d:" + executeQuery(toNum, spark, schemaProvider, outputDir))
     } else {
       val elapsedTimes = new ListBuffer[Long]()
-      for (num <- 1 to 22) {
+
+      for (num <- fromNum to toNum) {
         elapsedTimes += executeQuery(num, spark, schemaProvider, outputDir)
       }
-      for (num <- 1 to 22) {
-        println(f"Q${num}%02d:" + elapsedTimes(num))
+      for (num <- fromNum to toNum) {
+        println(f"Q${num}%02d:" + elapsedTimes(num-fromNum))
       }
     }
 

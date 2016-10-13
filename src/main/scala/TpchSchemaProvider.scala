@@ -81,7 +81,7 @@ case class Supplier(
   s_comment: String)
 
 
-class TpchSchemaProvider(spark: SparkSession, inputDir: String, cache: Boolean) {
+class TpchSchemaProvider(spark: SparkSession, inputDir: String, cache: Boolean, sql: Boolean) {
   import spark.implicits._
 
   val customer = spark.sparkContext.textFile(inputDir + "/customer.tbl").map(_.split('|')).map(p => Customer(p(0).trim.toInt, p(1).trim, p(2).trim, p(3).trim.toInt, p(4).trim, p(5).trim.toDouble, p(6).trim, p(7).trim)).toDF()
@@ -94,15 +94,24 @@ class TpchSchemaProvider(spark: SparkSession, inputDir: String, cache: Boolean) 
   val supplier = spark.sparkContext.textFile(inputDir + "/supplier.tbl").map(_.split('|')).map(p => Supplier(p(0).trim.toInt, p(1).trim, p(2).trim, p(3).trim.toInt, p(4).trim, p(5).trim.toDouble, p(6).trim)).toDF()
 
   if (cache) {
-    customer.cache().head(1)
-    lineitem.cache().head(1)
-    nation.cache().head(1)
-    region.cache().head(1)
-    order.cache().head(1)
-    part.cache().head(1)
-    partsupp.cache().head(1)
-    supplier.cache().head(1)
+    //customer.cache().count()
+    lineitem.cache().count()
+    //nation.cache().count()
+    //region.cache().count()
+    //order.cache().count()
+    //part.cache().count()
+    //partsupp.cache().count()
+    //supplier.cache().count()
   }
+
+  customer.createOrReplaceTempView("customer")
+  lineitem.createOrReplaceTempView("lineitem")
+  nation.createOrReplaceTempView("nation")
+  region.createOrReplaceTempView("region")
+  order.createOrReplaceTempView("order")
+  part.createOrReplaceTempView("part")
+  partsupp.createOrReplaceTempView("partsupp")
+  supplier.createOrReplaceTempView("supplier")
 
   def close() = {
     if (cache) {
