@@ -13,31 +13,23 @@ import scala.collection.mutable.ListBuffer
  *
  */
 abstract class TpchQuery {
+  // get the name of the class excluding dollar signs and package
+  private def escapeClassName(className: String): String = {
+    className.split("\\.").last.replaceAll("\\$", "")
+  }
+
+  def getName(): String = escapeClassName(this.getClass.getName)
   /**
    *  implemented in children classes and hold the actual query
    */
   def execute(spark: SparkSession, tpchSchemaProvider: TpchSchemaProvider): DataFrame
 }
 
+
 object TpchQuery {
 
-  // get the name of the class excluding dollar signs and package
-  def escapeClassName(className: String): String = {
-    className.split("\\.").last.replaceAll("\\$", "")
-  }
 
-  /**
-    * Execute query reflectively
-    */
-  def executeQuery(queryNo: Int, spark: SparkSession, tpchSchemaProvider: TpchSchemaProvider, outputDir: String): Long = {
-    assert(queryNo >= 1, "Invalid query number")
-    val t0 = System.nanoTime()
-    val query = Class.forName(f"main.scala.Q${queryNo}%02d").newInstance.asInstanceOf[TpchQuery]
-    outputDF(query.execute(spark, tpchSchemaProvider), outputDir, escapeClassName(query.getClass.getName))
-    val t1 = System.nanoTime()
 
-    (t1 - t0) / 1000000
-  }
 
   def outputDF(df: DataFrame, outputDir: String, className: String): Unit = {
     if (outputDir == null || outputDir == "")
@@ -46,63 +38,76 @@ object TpchQuery {
       df.write.mode("overwrite").json(outputDir + "/" + className + ".out") // json to avoid alias
   }
 
+  def executeQueries(spark: SparkSession, tpchSchemaProvider: TpchSchemaProvider, fromNum: Int, toNum: Int, runs: Int) : List[Long] = {
+    for (i <- 1 to runs) {
+      for (queryNo <- fromNum to toNum) {
+        val t0 = System.nanoTime()
+
+        val query = Class.forName(f"main.scala.Q${queryNo}%02d").newInstance.asInstanceOf[TpchQuery]
+        outputDF(query.execute(spark, tpchSchemaProvider), tpchSchemaProvider.outputDir, query.getName())
+
+        val t1 = System.nanoTime()
+
+        (t1 - t0) / 1000000
+      }
+    }
+    //println(f"Q${toNum}%02d:" +
+  }
+
+  case class Config(appName: String = "TPC-H", runs: Int = 1, input: String = "", output: String = "", fromNum: Int = -1, toNum: Int = -1,
+    queryNum: Int = -1, caches: Seq[String] = Seq(), sql: Boolean = false)
+
   def main(args: Array[String]): Unit = {
-    // read files from local FS
-    var inputDir = "file://" + new File(".").getAbsolutePath() + "/dbgen"
-    // read from hdfs
-    // val inputDir = "/dbgen"
+    val parser = new scopt.OptionParser[Config]("TpchBenchmark") {
+      head("TPC-H Benchmark for Spark")
 
-    // if set write results to hdfs, if null write to stdout
-    var outputDir: String = null
-    // val outputDir = "/tpch"
+      opt[String]("appName").action( (x,c) => c.copy(appName = x)).
+        text("spark application name")
+      opt[Int]('r', "runs").action( (x,c) => c.copy(runs = x)).
+        text("how many times to run queries")
+      opt[String]('i', "input").action( (x, c) => c.copy(input = x)).
+        text("input is the path for the source directory. file:// or hdfs://")
+      opt[String]('o', "output").action( (x, c) => c.copy(output = x)).
+        text("output is the path for the target directory. file:// or hdfs://")
+      opt[Int]('f', "from").action( (x,c) => c.copy(fromNum = x)).
+        text("from is the number from which the query run starts")
+      opt[Int]('t', "to").action( (x,c) => c.copy(toNum = x)).
+        text("to is the number the query run ends")
+      opt[Int]('q', "query").action( (x,c) => c.copy(queryNum = x)).
+        text("query is the individual number to run")
+      opt[Seq[String]]("caches").valueName("customer,customer...").action( (x,c) =>
+        c.copy(caches = x)) .text("tables to cache to run queris upon. 'all' makes the whole table cached")
+      opt[Boolean]("sql").action( (x,c) => c.copy(sql = x)).
+        text("the sql flag indicates whether the queries are run by means of sql or dataframe")
 
-    val spark = SparkSession.builder().appName("TPC-H").getOrCreate()
+      help("help").text("prints this usage text")
 
-    if (args.length < 1)
-      throw new RuntimeException("Invalid number of arguments")
-
-    var queryNum = args(0)
-    var fromNum = -1
-    var toNum = -1
-
-    if (queryNum.contains("-")) {
-      val items = queryNum.split("-")
-      fromNum = items(0).toInt
-      toNum = items(1).toInt
-    } else {
-      toNum = queryNum.toInt
+      checkConfig(c =>
+        if (c.queryNum != -1 && c.fromNum != -1 && c.toNum != -1) {
+          failure("query and from/to are not set at the same time")
+        } else success
+      )
     }
 
-    if (args.length > 1)
-      inputDir = args(1)
-    if (args.length > 2)
-      outputDir = args(2)
-
-    var cache = false
-    if (args.length > 3)
-      if (args(3) == "cache")
-        cache = true
-
-    var sql = false
-    if (args.length > 4)
-      if (args(4) == "sql")
-        sql = true
-
-    val schemaProvider = new TpchSchemaProvider(spark, inputDir, cache, sql)
-
-
-    if (fromNum == -1) {
-      println(f"Q${toNum}%02d:" + executeQuery(toNum, spark, schemaProvider, outputDir))
-    } else {
-      val elapsedTimes = new ListBuffer[Long]()
-
-      for (num <- fromNum to toNum) {
-        elapsedTimes += executeQuery(num, spark, schemaProvider, outputDir)
-      }
-      for (num <- fromNum to toNum) {
-        println(f"Q${num}%02d:" + elapsedTimes(num-fromNum))
-      }
+    val config = parser.parse(args, Config()) match {
+      case Some(config) =>
+        config
+      case None =>
+        print("failed to parse arguments")
+        return
     }
+
+
+    val spark = SparkSession.builder().appName(config.appName).getOrCreate()
+    val schemaProvider = new TpchSchemaProvider(spark, config.input, config.output, config.caches, config.sql)
+
+    val results = if (config.queryNum != -1) {
+      executeQueries(spark, schemaProvider, config.queryNum, config.queryNum, config.runs)
+    } else {
+      executeQueries(spark, schemaProvider, config.fromNum, config.toNum, config.runs)
+    }
+
+    results.foreach(_ => println())
 
     schemaProvider.close()
   }

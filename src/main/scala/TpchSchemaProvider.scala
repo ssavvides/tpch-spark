@@ -81,48 +81,52 @@ case class Supplier(
   s_comment: String)
 
 
-class TpchSchemaProvider(spark: SparkSession, inputDir: String, cache: Boolean, sql: Boolean) {
+class TpchSchemaProvider(spark: SparkSession, inputDir: String, initOutputDir: String, caches: Seq[String], sql: Boolean) {
   import spark.implicits._
 
-  val customer = spark.sparkContext.textFile(inputDir + "/customer.tbl").map(_.split('|')).map(p => Customer(p(0).trim.toInt, p(1).trim, p(2).trim, p(3).trim.toInt, p(4).trim, p(5).trim.toDouble, p(6).trim, p(7).trim)).toDF()
-  val lineitem = spark.sparkContext.textFile(inputDir + "/lineitem.tbl").map(_.split('|')).map(p => Lineitem(p(0).trim.toInt, p(1).trim.toInt, p(2).trim.toInt, p(3).trim.toInt, p(4).trim.toDouble, p(5).trim.toDouble, p(6).trim.toDouble, p(7).trim.toDouble, p(8).trim, p(9).trim, p(10).trim, p(11).trim, p(12).trim, p(13).trim, p(14).trim, p(15).trim)).toDF()
-  val nation = spark.sparkContext.textFile(inputDir + "/nation.tbl").map(_.split('|')).map(p => Nation(p(0).trim.toInt, p(1).trim, p(2).trim.toInt, p(3).trim)).toDF()
-  val region = spark.sparkContext.textFile(inputDir + "/region.tbl").map(_.split('|')).map(p => Region(p(0).trim.toInt, p(1).trim, p(1).trim)).toDF()
-  val order = spark.sparkContext.textFile(inputDir + "/orders.tbl").map(_.split('|')).map(p => Order(p(0).trim.toInt, p(1).trim.toInt, p(2).trim, p(3).trim.toDouble, p(4).trim, p(5).trim, p(6).trim, p(7).trim.toInt, p(8).trim)).toDF()
-  val part = spark.sparkContext.textFile(inputDir + "/part.tbl").map(_.split('|')).map(p => Part(p(0).trim.toInt, p(1).trim, p(2).trim, p(3).trim, p(4).trim, p(5).trim.toInt, p(6).trim, p(7).trim.toDouble, p(8).trim)).toDF()
-  val partsupp = spark.sparkContext.textFile(inputDir + "/partsupp.tbl").map(_.split('|')).map(p => Partsupp(p(0).trim.toInt, p(1).trim.toInt, p(2).trim.toInt, p(3).trim.toDouble, p(4).trim)).toDF()
-  val supplier = spark.sparkContext.textFile(inputDir + "/supplier.tbl").map(_.split('|')).map(p => Supplier(p(0).trim.toInt, p(1).trim, p(2).trim, p(3).trim.toInt, p(4).trim, p(5).trim.toDouble, p(6).trim)).toDF()
+  val outputDir = initOutputDir
+  val dfMap = Map(
+    "customer" -> spark.sparkContext.textFile(inputDir + "/customer.tbl").map(_.split('|')).map(p =>
+      Customer(p(0).trim.toInt, p(1).trim, p(2).trim, p(3).trim.toInt, p(4).trim, p(5).trim.toDouble, p(6).trim, p(7).trim)).toDF(),
+    "lineitem" -> spark.sparkContext.textFile(inputDir + "/lineitem.tbl").map(_.split('|')).map(p =>
+      Lineitem(p(0).trim.toInt, p(1).trim.toInt, p(2).trim.toInt, p(3).trim.toInt, p(4).trim.toDouble, p(5).trim.toDouble, p(6).trim.toDouble
+        , p(7).trim.toDouble, p(8).trim, p(9).trim, p(10).trim, p(11).trim, p(12).trim, p(13).trim, p(14).trim, p(15).trim)).toDF(),
+    "nation" -> spark.sparkContext.textFile(inputDir + "/nation.tbl").map(_.split('|')).map(p =>
+      Nation(p(0).trim.toInt, p(1).trim, p(2).trim.toInt, p(3).trim)).toDF(),
+    "region" -> spark.sparkContext.textFile(inputDir + "/region.tbl").map(_.split('|')).map(p =>
+      Region(p(0).trim.toInt, p(1).trim, p(1).trim)).toDF(),
+    "order" -> spark.sparkContext.textFile(inputDir + "/orders.tbl").map(_.split('|')).map(p =>
+      Order(p(0).trim.toInt, p(1).trim.toInt, p(2).trim, p(3).trim.toDouble, p(4).trim, p(5).trim, p(6).trim
+        , p(7).trim.toInt, p(8).trim)).toDF(),
+    "part" -> spark.sparkContext.textFile(inputDir + "/part.tbl").map(_.split('|')).map(p =>
+      Part(p(0).trim.toInt, p(1).trim, p(2).trim, p(3).trim, p(4).trim, p(5).trim.toInt, p(6).trim
+        , p(7).trim.toDouble, p(8).trim)).toDF(),
+    "partsupp" -> spark.sparkContext.textFile(inputDir + "/partsupp.tbl").map(_.split('|')).map(p =>
+      Partsupp(p(0).trim.toInt, p(1).trim.toInt, p(2).trim.toInt, p(3).trim.toDouble, p(4).trim)).toDF(),
+    "supplier" -> spark.sparkContext.textFile(inputDir + "/supplier.tbl").map(_.split('|')).map(p =>
+      Supplier(p(0).trim.toInt, p(1).trim, p(2).trim, p(3).trim.toInt, p(4).trim, p(5).trim.toDouble, p(6).trim)).toDF())
 
-  if (cache) {
-    //customer.cache().count()
-    lineitem.cache().count()
-    //nation.cache().count()
-    //region.cache().count()
-    //order.cache().count()
-    //part.cache().count()
-    //partsupp.cache().count()
-    //supplier.cache().count()
+  // for implicits
+  val customer = dfMap.get("customer").get
+  val lineitem = dfMap.get("lineimte").get
+  val nation = dfMap.get("nation").get
+  val region = dfMap.get("region").get
+  val order = dfMap.get("order").get
+  val part = dfMap.get("part").get
+  val partsupp = dfMap.get("partsupp").get
+  val supplier = dfMap.get("supplier").get
+
+  if (caches.contains("all")) {
+    dfMap.values.foreach(_.cache().count())
+  } else {
+    caches.foreach(_ => dfMap.get(_).get.cache().count())
   }
 
-  customer.createOrReplaceTempView("customer")
-  lineitem.createOrReplaceTempView("lineitem")
-  nation.createOrReplaceTempView("nation")
-  region.createOrReplaceTempView("region")
-  order.createOrReplaceTempView("order")
-  part.createOrReplaceTempView("part")
-  partsupp.createOrReplaceTempView("partsupp")
-  supplier.createOrReplaceTempView("supplier")
+  dfMap.foreach {
+    case (key, value) => value.createOrReplaceTempView(key)
+  }
 
   def close() = {
-    if (cache) {
-      customer.unpersist()
-      lineitem.unpersist()
-      nation.unpersist()
-      region.unpersist()
-      order.unpersist()
-      part.unpersist()
-      partsupp.unpersist()
-      supplier.unpersist()
-    }
+    dfMap.values.foreach(_.unpersist())
   }
 }
