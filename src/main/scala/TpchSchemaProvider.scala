@@ -108,7 +108,7 @@ class TpchSchemaProvider(spark: SparkSession, inputDir: String, initOutputDir: S
 
   // for implicits
   val customer = dfMap.get("customer").get
-  val lineitem = dfMap.get("lineimte").get
+  val lineitem = dfMap.get("lineitem").get
   val nation = dfMap.get("nation").get
   val region = dfMap.get("region").get
   val order = dfMap.get("order").get
@@ -119,7 +119,9 @@ class TpchSchemaProvider(spark: SparkSession, inputDir: String, initOutputDir: S
   if (caches.contains("all")) {
     dfMap.values.foreach(_.cache().count())
   } else {
-    caches.foreach(_ => dfMap.get(_).get.cache().count())
+    caches.foreach {
+      case (key) =>  dfMap.get(key).get.cache().count()
+    }
   }
 
   dfMap.foreach {

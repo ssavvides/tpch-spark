@@ -29,5 +29,4 @@ class Q01 extends TpchQuery {
         avg($"l_quantity"), avg($"l_extendedprice"), avg($"l_discount"), count($"l_quantity"))
       .sort($"l_returnflag", $"l_linestatus")
   }
-
 }
