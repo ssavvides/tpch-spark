@@ -28,9 +28,6 @@ abstract class TpchQuery {
 
 object TpchQuery {
 
-
-
-
   def outputDF(df: DataFrame, outputDir: String, className: String): Unit = {
     if (outputDir == null || outputDir == "")
       df.collect().foreach(println)
@@ -38,20 +35,21 @@ object TpchQuery {
       df.write.mode("overwrite").json(outputDir + "/" + className + ".out") // json to avoid alias
   }
 
-  def executeQueries(spark: SparkSession, tpchSchemaProvider: TpchSchemaProvider, fromNum: Int, toNum: Int, runs: Int) : List[Long] = {
-    for (i <- 1 to runs) {
-      for (queryNo <- fromNum to toNum) {
+  def executeQueries(spark: SparkSession, tpchSchemaProvider: TpchSchemaProvider, fromNum: Int, toNum: Int, runs: Int) = {
+    for (queryNo <- fromNum to toNum) {
+      for (i <- 1 to runs) {
         val t0 = System.nanoTime()
 
         val query = Class.forName(f"main.scala.Q${queryNo}%02d").newInstance.asInstanceOf[TpchQuery]
+        val queryName = query.getName()
         outputDF(query.execute(spark, tpchSchemaProvider), tpchSchemaProvider.outputDir, query.getName())
 
         val t1 = System.nanoTime()
 
-        (t1 - t0) / 1000000
+        val elapsed = (t1 - t0) / 1000000000.0f // second
+        println(f"${queryName}%s\t${elapsed}%f")
       }
     }
-    //println(f"Q${toNum}%02d:" +
   }
 
   case class Config(appName: String = "TPC-H", runs: Int = 1, input: String = "", output: String = "", fromNum: Int = -1, toNum: Int = -1,
@@ -97,7 +95,6 @@ object TpchQuery {
         return
     }
 
-
     val spark = SparkSession.builder().appName(config.appName).getOrCreate()
     val schemaProvider = new TpchSchemaProvider(spark, config.input, config.output, config.caches, config.sql)
 
@@ -106,8 +103,6 @@ object TpchQuery {
     } else {
       executeQueries(spark, schemaProvider, config.fromNum, config.toNum, config.runs)
     }
-
-    results.foreach(_ => println())
 
     schemaProvider.close()
   }
