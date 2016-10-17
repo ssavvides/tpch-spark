@@ -5,6 +5,9 @@ import org.apache.spark.sql.SparkSession
 
 class Q40 extends TpchQuery
 {
+  @Override
+  override def getName(): String = "tpch-query-1"
+
   override def execute(spark: SparkSession, tpchSchemaProvider: TpchSchemaProvider): DataFrame = {
     spark.sql(
       "SELECT " +
