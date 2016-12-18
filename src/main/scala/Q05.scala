@@ -1,5 +1,7 @@
 package main.scala
 
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.sum
 import org.apache.spark.sql.functions.udf
 
@@ -9,16 +11,15 @@ import org.apache.spark.sql.functions.udf
  *
  */
 class Q05 extends TpchQuery {
-
-  import spark.implicits._
-
-  override def execute(): Unit = {
+  override def execute(spark: SparkSession, schemaProvider: TpchSchemaProvider): DataFrame = {
+    import schemaProvider._
+    import spark.implicits._
 
     val decrease = udf { (x: Double, y: Double) => x * (1 - y) }
 
     val forders = order.filter($"o_orderdate" < "1995-01-01" && $"o_orderdate" >= "1994-01-01")
 
-    val res = region.filter($"r_name" === "ASIA")
+    region.filter($"r_name" === "ASIA")
       .join(nation, $"r_regionkey" === nation("n_regionkey"))
       .join(supplier, $"n_nationkey" === supplier("s_nationkey"))
       .join(lineitem, $"s_suppkey" === lineitem("l_suppkey"))
@@ -29,9 +30,6 @@ class Q05 extends TpchQuery {
       .groupBy($"n_name")
       .agg(sum($"value").as("revenue"))
       .sort($"revenue".desc)
-
-    outputDF(res)
-
   }
 
 }

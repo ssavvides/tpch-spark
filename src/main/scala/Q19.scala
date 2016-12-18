@@ -1,5 +1,7 @@
 package main.scala
 
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.first
 import org.apache.spark.sql.functions.sum
 import org.apache.spark.sql.functions.udf
@@ -11,9 +13,9 @@ import org.apache.spark.sql.functions.udf
  */
 class Q19 extends TpchQuery {
 
-  import spark.implicits._
-
-  override def execute(): Unit = {
+  override def execute(spark: SparkSession, schemaProvider: TpchSchemaProvider): DataFrame = {
+    import schemaProvider._
+    import spark.implicits._
 
     val sm = udf { (x: String) => x.matches("SM CASE|SM BOX|SM PACK|SM PKG") }
     val md = udf { (x: String) => x.matches("MED BAG|MED BOX|MED PKG|MED PACK") }
@@ -22,7 +24,7 @@ class Q19 extends TpchQuery {
     val decrease = udf { (x: Double, y: Double) => x * (1 - y) }
 
     // project part and lineitem first?
-    val res = part.join(lineitem, $"l_partkey" === $"p_partkey")
+    part.join(lineitem, $"l_partkey" === $"p_partkey")
       .filter(($"l_shipmode" === "AIR" || $"l_shipmode" === "AIR REG") &&
         $"l_shipinstruct" === "DELIVER IN PERSON")
       .filter(
@@ -40,9 +42,6 @@ class Q19 extends TpchQuery {
               $"p_size" >= 1 && $"p_size" <= 15))
       .select(decrease($"l_extendedprice", $"l_discount").as("volume"))
       .agg(sum("volume"))
-
-    outputDF(res)
-
   }
 
 }

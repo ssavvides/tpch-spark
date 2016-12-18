@@ -1,5 +1,7 @@
 package main.scala
 
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.min
 
 /**
@@ -8,10 +10,9 @@ import org.apache.spark.sql.functions.min
  *
  */
 class Q02 extends TpchQuery {
-
-  import spark.implicits._
-
-  override def execute(): Unit = {
+  override def execute(spark: SparkSession, schemaProvider: TpchSchemaProvider): DataFrame = {
+    import schemaProvider._
+    import spark.implicits._
 
     val europe = region.filter($"r_name" === "EUROPE")
       .join(nation, $"r_regionkey" === nation("n_regionkey"))
@@ -26,14 +27,11 @@ class Q02 extends TpchQuery {
     val minCost = brass.groupBy(brass("ps_partkey"))
       .agg(min("ps_supplycost").as("min"))
 
-    val res = brass.join(minCost, brass("ps_partkey") === minCost("ps_partkey"))
+    brass.join(minCost, brass("ps_partkey") === minCost("ps_partkey"))
       .filter(brass("ps_supplycost") === minCost("min"))
       .select("s_acctbal", "s_name", "n_name", "p_partkey", "p_mfgr", "s_address", "s_phone", "s_comment")
       .sort($"s_acctbal".desc, $"n_name", $"s_name", $"p_partkey")
       .limit(100)
-
-    outputDF(res)
-
   }
 
 }

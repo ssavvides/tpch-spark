@@ -1,5 +1,7 @@
 package main.scala
 
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.count
 import org.apache.spark.sql.functions.udf
 
@@ -10,22 +12,19 @@ import org.apache.spark.sql.functions.udf
  */
 class Q13 extends TpchQuery {
 
-  import spark.implicits._
-
-  override def execute(): Unit = {
+  override def execute(spark: SparkSession, schemaProvider: TpchSchemaProvider): DataFrame = {
+    import schemaProvider._
+    import spark.implicits._
 
     val special = udf { (x: String) => x.matches(".*special.*requests.*") }
 
-    val res = customer.join(order, $"c_custkey" === order("o_custkey")
+    customer.join(order, $"c_custkey" === order("o_custkey")
       && !special(order("o_comment")), "left_outer")
       .groupBy($"o_custkey")
       .agg(count($"o_orderkey").as("c_count"))
       .groupBy($"c_count")
       .agg(count($"o_custkey").as("custdist"))
       .sort($"custdist".desc, $"c_count".desc)
-
-    outputDF(res)
-
   }
 
 }

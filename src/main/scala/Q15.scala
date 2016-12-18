@@ -1,5 +1,7 @@
 package main.scala
 
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.max
 import org.apache.spark.sql.functions.sum
 import org.apache.spark.sql.functions.udf
@@ -11,9 +13,9 @@ import org.apache.spark.sql.functions.udf
  */
 class Q15 extends TpchQuery {
 
-  import spark.implicits._
-
-  override def execute(): Unit = {
+  override def execute(spark: SparkSession, schemaProvider: TpchSchemaProvider): DataFrame = {
+    import schemaProvider._
+    import spark.implicits._
 
     val decrease = udf { (x: Double, y: Double) => x * (1 - y) }
 
@@ -24,14 +26,11 @@ class Q15 extends TpchQuery {
       .agg(sum($"value").as("total"))
     // .cache
 
-    val res = revenue.agg(max($"total").as("max_total"))
+    revenue.agg(max($"total").as("max_total"))
       .join(revenue, $"max_total" === revenue("total"))
       .join(supplier, $"l_suppkey" === supplier("s_suppkey"))
       .select($"s_suppkey", $"s_name", $"s_address", $"s_phone", $"total")
       .sort($"s_suppkey")
-
-    outputDF(res)
-
   }
 
 }

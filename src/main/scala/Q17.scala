@@ -1,5 +1,7 @@
 package main.scala
 
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.avg
 import org.apache.spark.sql.functions.sum
 import org.apache.spark.sql.functions.udf
@@ -11,9 +13,9 @@ import org.apache.spark.sql.functions.udf
  */
 class Q17 extends TpchQuery {
 
-  import spark.implicits._
-
-  override def execute(): Unit = {
+  override def execute(spark: SparkSession, schemaProvider: TpchSchemaProvider): DataFrame = {
+    import schemaProvider._
+    import spark.implicits._
 
     val mul02 = udf { (x: Double) => x * 0.2 }
 
@@ -24,15 +26,12 @@ class Q17 extends TpchQuery {
       .join(lineitem, $"p_partkey" === lineitem("l_partkey"), "left_outer")
     // select
 
-    val res = fpart.groupBy("p_partkey")
+    fpart.groupBy("p_partkey")
       .agg(mul02(avg($"l_quantity")).as("avg_quantity"))
       .select($"p_partkey".as("key"), $"avg_quantity")
       .join(fpart, $"key" === fpart("p_partkey"))
       .filter($"l_quantity" < $"avg_quantity")
       .agg(sum($"l_extendedprice") / 7.0)
-
-    outputDF(res)
-
   }
 
 }

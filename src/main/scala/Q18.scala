@@ -1,5 +1,7 @@
 package main.scala
 
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.first
 import org.apache.spark.sql.functions.sum
 import org.apache.spark.sql.functions.udf
@@ -11,11 +13,11 @@ import org.apache.spark.sql.functions.udf
  */
 class Q18 extends TpchQuery {
 
-  import spark.implicits._
+  override def execute(spark: SparkSession, schemaProvider: TpchSchemaProvider): DataFrame = {
+    import schemaProvider._
+    import spark.implicits._
 
-  override def execute(): Unit = {
-
-    val res = lineitem.groupBy($"l_orderkey")
+    lineitem.groupBy($"l_orderkey")
       .agg(sum($"l_quantity").as("sum_quantity"))
       .filter($"sum_quantity" > 300)
       .select($"l_orderkey".as("key"), $"sum_quantity")
@@ -27,9 +29,6 @@ class Q18 extends TpchQuery {
       .agg(sum("l_quantity"))
       .sort($"o_totalprice".desc, $"o_orderdate")
       .limit(100)
-
-    outputDF(res)
-
   }
 
 }
