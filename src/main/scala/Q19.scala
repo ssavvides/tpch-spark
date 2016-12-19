@@ -1,7 +1,7 @@
 package main.scala
 
 import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.SparkContext
 import org.apache.spark.sql.functions.first
 import org.apache.spark.sql.functions.sum
 import org.apache.spark.sql.functions.udf
@@ -13,9 +13,12 @@ import org.apache.spark.sql.functions.udf
  */
 class Q19 extends TpchQuery {
 
-  override def execute(spark: SparkSession, schemaProvider: TpchSchemaProvider): DataFrame = {
+  override def execute(sc: SparkContext, schemaProvider: TpchSchemaProvider): DataFrame = {
+
+    // this is used to implicitly convert an RDD to a DataFrame.
+    val sqlContext = new org.apache.spark.sql.SQLContext(sc)
+    import sqlContext.implicits._
     import schemaProvider._
-    import spark.implicits._
 
     val sm = udf { (x: String) => x.matches("SM CASE|SM BOX|SM PACK|SM PKG") }
     val md = udf { (x: String) => x.matches("MED BAG|MED BOX|MED PKG|MED PACK") }

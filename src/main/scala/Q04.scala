@@ -1,7 +1,7 @@
 package main.scala
 
 import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.SparkContext
 import org.apache.spark.sql.functions.count
 
 /**
@@ -10,9 +10,13 @@ import org.apache.spark.sql.functions.count
  *
  */
 class Q04 extends TpchQuery {
-  override def execute(spark: SparkSession, schemaProvider: TpchSchemaProvider): DataFrame = {
+
+  override def execute(sc: SparkContext, schemaProvider: TpchSchemaProvider): DataFrame = {
+
+    // this is used to implicitly convert an RDD to a DataFrame.
+    val sqlContext = new org.apache.spark.sql.SQLContext(sc)
+    import sqlContext.implicits._
     import schemaProvider._
-    import spark.implicits._
 
     val forders = order.filter($"o_orderdate" >= "1993-07-01" && $"o_orderdate" < "1993-10-01")
     val flineitems = lineitem.filter($"l_commitdate" < $"l_receiptdate")

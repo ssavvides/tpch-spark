@@ -1,6 +1,6 @@
 package main.scala
 
-import org.apache.spark.sql._
+import org.apache.spark.SparkContext
 
 // TPC-H table schemas
 case class Customer(
@@ -80,30 +80,35 @@ case class Supplier(
   s_acctbal: Double,
   s_comment: String)
 
+class TpchSchemaProvider(sc: SparkContext, inputDir: String) {
 
-class TpchSchemaProvider(spark: SparkSession, inputDir: String, initOutputDir: String, caches: Seq[String], sql: Boolean) {
-  import spark.implicits._
+  // this is used to implicitly convert an RDD to a DataFrame.
+  val sqlContext = new org.apache.spark.sql.SQLContext(sc)
+  import sqlContext.implicits._
 
-  val outputDir = initOutputDir
   val dfMap = Map(
-    "customer" -> spark.sparkContext.textFile(inputDir + "/customer.tbl*").map(_.split('|')).map(p =>
+    "customer" -> sc.textFile(inputDir + "/customer.tbl*").map(_.split('|')).map(p =>
       Customer(p(0).trim.toInt, p(1).trim, p(2).trim, p(3).trim.toInt, p(4).trim, p(5).trim.toDouble, p(6).trim, p(7).trim)).toDF(),
-    "lineitem" -> spark.sparkContext.textFile(inputDir + "/lineitem.tbl*").map(_.split('|')).map(p =>
-      Lineitem(p(0).trim.toInt, p(1).trim.toInt, p(2).trim.toInt, p(3).trim.toInt, p(4).trim.toDouble, p(5).trim.toDouble, p(6).trim.toDouble
-        , p(7).trim.toDouble, p(8).trim, p(9).trim, p(10).trim, p(11).trim, p(12).trim, p(13).trim, p(14).trim, p(15).trim)).toDF(),
-    "nation" -> spark.sparkContext.textFile(inputDir + "/nation.tbl*").map(_.split('|')).map(p =>
+
+    "lineitem" -> sc.textFile(inputDir + "/lineitem.tbl*").map(_.split('|')).map(p =>
+      Lineitem(p(0).trim.toInt, p(1).trim.toInt, p(2).trim.toInt, p(3).trim.toInt, p(4).trim.toDouble, p(5).trim.toDouble, p(6).trim.toDouble, p(7).trim.toDouble, p(8).trim, p(9).trim, p(10).trim, p(11).trim, p(12).trim, p(13).trim, p(14).trim, p(15).trim)).toDF(),
+
+    "nation" -> sc.textFile(inputDir + "/nation.tbl*").map(_.split('|')).map(p =>
       Nation(p(0).trim.toInt, p(1).trim, p(2).trim.toInt, p(3).trim)).toDF(),
-    "region" -> spark.sparkContext.textFile(inputDir + "/region.tbl*").map(_.split('|')).map(p =>
+
+    "region" -> sc.textFile(inputDir + "/region.tbl*").map(_.split('|')).map(p =>
       Region(p(0).trim.toInt, p(1).trim, p(1).trim)).toDF(),
-    "order" -> spark.sparkContext.textFile(inputDir + "/orders.tbl*").map(_.split('|')).map(p =>
-      Order(p(0).trim.toInt, p(1).trim.toInt, p(2).trim, p(3).trim.toDouble, p(4).trim, p(5).trim, p(6).trim
-        , p(7).trim.toInt, p(8).trim)).toDF(),
-    "part" -> spark.sparkContext.textFile(inputDir + "/part.tbl*").map(_.split('|')).map(p =>
-      Part(p(0).trim.toInt, p(1).trim, p(2).trim, p(3).trim, p(4).trim, p(5).trim.toInt, p(6).trim
-        , p(7).trim.toDouble, p(8).trim)).toDF(),
-    "partsupp" -> spark.sparkContext.textFile(inputDir + "/partsupp.tbl*").map(_.split('|')).map(p =>
+
+    "order" -> sc.textFile(inputDir + "/orders.tbl*").map(_.split('|')).map(p =>
+      Order(p(0).trim.toInt, p(1).trim.toInt, p(2).trim, p(3).trim.toDouble, p(4).trim, p(5).trim, p(6).trim, p(7).trim.toInt, p(8).trim)).toDF(),
+
+    "part" -> sc.textFile(inputDir + "/part.tbl*").map(_.split('|')).map(p =>
+      Part(p(0).trim.toInt, p(1).trim, p(2).trim, p(3).trim, p(4).trim, p(5).trim.toInt, p(6).trim, p(7).trim.toDouble, p(8).trim)).toDF(),
+
+    "partsupp" -> sc.textFile(inputDir + "/partsupp.tbl*").map(_.split('|')).map(p =>
       Partsupp(p(0).trim.toInt, p(1).trim.toInt, p(2).trim.toInt, p(3).trim.toDouble, p(4).trim)).toDF(),
-    "supplier" -> spark.sparkContext.textFile(inputDir + "/supplier.tbl*").map(_.split('|')).map(p =>
+
+    "supplier" -> sc.textFile(inputDir + "/supplier.tbl*").map(_.split('|')).map(p =>
       Supplier(p(0).trim.toInt, p(1).trim, p(2).trim, p(3).trim.toInt, p(4).trim, p(5).trim.toDouble, p(6).trim)).toDF())
 
   // for implicits
@@ -116,19 +121,7 @@ class TpchSchemaProvider(spark: SparkSession, inputDir: String, initOutputDir: S
   val partsupp = dfMap.get("partsupp").get
   val supplier = dfMap.get("supplier").get
 
-  if (caches.contains("all")) {
-    dfMap.values.foreach(_.cache().count())
-  } else {
-    caches.foreach {
-      case (key) =>  dfMap.get(key).get.cache().count()
-    }
-  }
-
   dfMap.foreach {
     case (key, value) => value.createOrReplaceTempView(key)
-  }
-
-  def close() = {
-    dfMap.values.foreach(_.unpersist())
   }
 }

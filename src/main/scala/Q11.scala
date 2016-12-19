@@ -1,7 +1,7 @@
 package main.scala
 
 import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.SparkContext
 import org.apache.spark.sql.functions.sum
 import org.apache.spark.sql.functions.udf
 
@@ -11,9 +11,13 @@ import org.apache.spark.sql.functions.udf
  *
  */
 class Q11 extends TpchQuery {
-  override def execute(spark: SparkSession, schemaProvider: TpchSchemaProvider): DataFrame = {
+
+  override def execute(sc: SparkContext, schemaProvider: TpchSchemaProvider): DataFrame = {
+
+    // this is used to implicitly convert an RDD to a DataFrame.
+    val sqlContext = new org.apache.spark.sql.SQLContext(sc)
+    import sqlContext.implicits._
     import schemaProvider._
-    import spark.implicits._
 
     val mul = udf { (x: Double, y: Int) => x * y }
     val mul01 = udf { (x: Double) => x * 0.0001 }

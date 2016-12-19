@@ -1,5 +1,7 @@
 package main.scala
 
+import org.apache.spark.SparkContext
+import org.apache.spark.SparkConf
 import java.io.BufferedWriter
 import java.io.File
 import java.io.FileWriter
@@ -15,110 +17,85 @@ import scala.collection.mutable.ListBuffer
  *
  */
 abstract class TpchQuery {
+
   // get the name of the class excluding dollar signs and package
   private def escapeClassName(className: String): String = {
     className.split("\\.").last.replaceAll("\\$", "")
   }
 
   def getName(): String = escapeClassName(this.getClass.getName)
+
   /**
    *  implemented in children classes and hold the actual query
    */
-  def execute(spark: SparkSession, tpchSchemaProvider: TpchSchemaProvider): DataFrame
+  def execute(sc: SparkContext, tpchSchemaProvider: TpchSchemaProvider): DataFrame
 }
-
 
 object TpchQuery {
 
   def outputDF(df: DataFrame, outputDir: String, className: String): Unit = {
+
     if (outputDir == null || outputDir == "")
       df.collect().foreach(println)
     else
-      df.write.mode("overwrite").json(outputDir + "/" + className + ".out") // json to avoid alias
+      //df.write.mode("overwrite").json(outputDir + "/" + className + ".out") // json to avoid alias
+      df.write.mode("overwrite").format("com.databricks.spark.csv").option("header", "true").save(outputDir + "/" + className)
   }
 
-  def executeQueries(spark: SparkSession, tpchSchemaProvider: TpchSchemaProvider, fromNum: Int, toNum: Int, runs: Int) : ListBuffer[(String, Float)] = {
+  def executeQueries(sc: SparkContext, schemaProvider: TpchSchemaProvider, queryNum: Int): ListBuffer[(String, Float)] = {
+
+    // if set write results to hdfs, if null write to stdout
+    // val OUTPUT_DIR: String = "/tpch"
+    val OUTPUT_DIR: String = "file://" + new File(".").getAbsolutePath() + "/dbgen/output"
+
     val results = new ListBuffer[(String, Float)]
 
+    var fromNum = 1;
+    var toNum = 22;
+    if (queryNum != 0) {
+      fromNum = queryNum;
+      toNum = queryNum;
+    }
+
     for (queryNo <- fromNum to toNum) {
-      for (i <- 1 to runs) {
-        val t0 = System.nanoTime()
+      val t0 = System.nanoTime()
 
-        val query = Class.forName(f"main.scala.Q${queryNo}%02d").newInstance.asInstanceOf[TpchQuery]
-        outputDF(query.execute(spark, tpchSchemaProvider), tpchSchemaProvider.outputDir, query.getName())
+      val query = Class.forName(f"main.scala.Q${queryNo}%02d").newInstance.asInstanceOf[TpchQuery]
 
-        val t1 = System.nanoTime()
+      outputDF(query.execute(sc, schemaProvider), OUTPUT_DIR, query.getName())
 
-        val elapsed = (t1 - t0) / 1000000000.0f // second
-        results += new Tuple2(query.getName(), elapsed)
-      }
+      val t1 = System.nanoTime()
+
+      val elapsed = (t1 - t0) / 1000000000.0f // second
+      results += new Tuple2(query.getName(), elapsed)
+
     }
 
     return results
   }
 
-  case class Config(appName: String = "TPC-H", runs: Int = 1, input: String = "", output: String = "",
-    resultfile: String = "", fromNum: Int = -1, toNum: Int = -1, queryNum: Int = -1, caches: Seq[String] = Seq(),
-    sql: Boolean = false)
-
   def main(args: Array[String]): Unit = {
-    val parser = new scopt.OptionParser[Config]("TpchBenchmark") {
-      head("TPC-H Benchmark for Spark")
 
-      opt[String]("appName").action( (x,c) => c.copy(appName = x)).
-        text("spark application name")
-      opt[Int]('r', "runs").action( (x,c) => c.copy(runs = x)).
-        text("how many times to run queries")
-      opt[String]('i', "input").required().action( (x, c) => c.copy(input = x)).
-        text("input is the path for the source directory. file:// or hdfs://")
-      opt[String]('o', "output").action( (x, c) => c.copy(output = x)).
-        text("output is the path for the target directory. file:// or hdfs://")
-      opt[String]("result").required().action( (x,c) => c.copy(resultfile = x)).
-        text("result tsv file")
-      opt[Int]('f', "from").action( (x,c) => c.copy(fromNum = x)).
-        text("from is the number from which the query run starts")
-      opt[Int]('t', "to").action( (x,c) => c.copy(toNum = x)).
-        text("to is the number the query run ends")
-      opt[Int]('q', "query").action( (x,c) => c.copy(queryNum = x)).
-        text("query is the individual number to run")
-      opt[Seq[String]]("caches").valueName("customer,customer...").action( (x,c) =>
-        c.copy(caches = x)) .text("tables to cache to run queris upon. 'all' makes the whole table cached")
-      opt[Boolean]("sql").action( (x,c) => c.copy(sql = x)).
-        text("the sql flag indicates whether the queries are run by means of sql or dataframe")
+    var queryNum = 0;
+    if (args.length > 0)
+      queryNum = args(0).toInt
 
-      help("help").text("prints this usage text")
+    val conf = new SparkConf().setAppName("Simple Application")
+    val sc = new SparkContext(conf)
 
-      checkConfig(c =>
-        if (c.queryNum != -1 && c.fromNum != -1 && c.toNum != -1) {
-          failure("query and from/to are not set at the same time")
-        } else {
-          success
-        }
-      )
-    }
+    // read files from local FS
+    val INPUT_DIR = "file://" + new File(".").getAbsolutePath() + "/dbgen"
 
-    val config = parser.parse(args, Config()) match {
-      case Some(config) =>
-        config
-      case None =>
-        print("failed to parse arguments")
-        return
-    }
+    // read from hdfs
+    // val INPUT_DIR: String = "/dbgen"
 
-    val spark = SparkSession.builder().appName(config.appName).getOrCreate()
-    val schemaProvider = new TpchSchemaProvider(spark, config.input, config.output, config.caches, config.sql)
+    val schemaProvider = new TpchSchemaProvider(sc, INPUT_DIR)
 
     val output = new ListBuffer[(String, Float)]
-    val results = if (config.queryNum != -1) {
-      output ++= executeQueries(spark, schemaProvider, config.queryNum, config.queryNum, config.runs)
-    } else {
-     output ++= executeQueries(spark, schemaProvider, config.fromNum, config.toNum, config.runs)
-    }
+    output ++= executeQueries(sc, schemaProvider, queryNum)
 
-    schemaProvider.close()
-
-    val outFile = new File(config.resultfile)
-    val bw = new BufferedWriter(new FileWriter(outFile, false))
+    val outFile = new File("TIMES.txt")
+    val bw = new BufferedWriter(new FileWriter(outFile, true))
 
     output.foreach {
       case (key, value) => bw.write(f"${key}%s\t${value}%1.8f\n")
