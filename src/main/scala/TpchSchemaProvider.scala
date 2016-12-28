@@ -97,7 +97,7 @@ class TpchSchemaProvider(sc: SparkContext, inputDir: String) {
       Nation(p(0).trim.toInt, p(1).trim, p(2).trim.toInt, p(3).trim)).toDF(),
 
     "region" -> sc.textFile(inputDir + "/region.tbl*").map(_.split('|')).map(p =>
-      Region(p(0).trim.toInt, p(1).trim, p(1).trim)).toDF(),
+      Region(p(0).trim.toInt, p(1).trim, p(2).trim)).toDF(),
 
     "order" -> sc.textFile(inputDir + "/orders.tbl*").map(_.split('|')).map(p =>
       Order(p(0).trim.toInt, p(1).trim.toInt, p(2).trim, p(3).trim.toDouble, p(4).trim, p(5).trim, p(6).trim, p(7).trim.toInt, p(8).trim)).toDF(),
