@@ -5,8 +5,6 @@ Tested under Spark 2.0.0
 
 Savvas Savvides
 
-ssavvides@us.ibm.com
-
 savvas@purdue.edu
 
 ### Running
