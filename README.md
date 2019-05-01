@@ -7,6 +7,31 @@ Savvas Savvides
 
 savvas@purdue.edu
 
+
+### Generating tables
+
+Under the dbgen directory do:
+```
+make
+```
+
+This should generate an executable called `dbgen`
+```
+./dbgen -h
+```
+
+gives you the various options for generating the tables. The simplest case is running:
+```
+./dbgen
+```
+which generates tables with extension `.tbl` with scale 1 (default) for a total of rougly 1GB size across all tables. For different size tables you can use the `-s` option:
+```
+./dbgen -s 10
+```
+will generate roughly 10GB of input data.
+
+You can then either upload your data to hdfs or read them locally.
+
 ### Running
 
 First compile using:
@@ -15,7 +40,7 @@ First compile using:
 sbt package
 ```
 
-Make sure you set the INPUT_DIR and OUTPUT_DIR in TpchQuery class before compiling to point to the
+Make sure you set the INPUT_DIR and OUTPUT_DIR in `TpchQuery` class before compiling to point to the
 location the of the input data and where the output should be saved.
 
 You can then run a query using:
