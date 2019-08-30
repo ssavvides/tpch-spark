@@ -1,7 +1,7 @@
 # tpch-spark
 
 TPC-H queries implemented in Spark using the DataFrames API.
-Tested under Spark 2.0.0
+Tested under Spark 2.4.0
 
 Savvas Savvides
 
