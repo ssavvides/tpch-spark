@@ -41,7 +41,11 @@
 */
 #include <stdio.h>
 #ifndef _POSIX_SOURCE
+#if defined(__MACH__)
+#include <stdlib.h>
+#else 
 #include <malloc.h>
+#endif
 #endif /* POSIX_SOURCE */
 #if (defined(_POSIX_)||!defined(WIN32))
 #include <unistd.h>
