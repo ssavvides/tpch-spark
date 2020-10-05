@@ -7,7 +7,10 @@ import java.io.File
 import java.io.FileWriter
 import org.apache.spark.sql._
 import scala.collection.mutable.ListBuffer
-
+import scala.reflect.runtime.universe._
+import org.apache.spark.sql.catalyst.ScalaReflection
+import scopt.OParser
+import org.apache.hadoop.fs._
 /**
  * Parent class for TPC-H queries.
  *
@@ -20,7 +23,10 @@ abstract class TpchQuery {
 
   // get the name of the class excluding dollar signs and package
   private def escapeClassName(className: String): String = {
-    className.split("\\.").last.replaceAll("\\$", "")
+    val items = className.split("\\.")
+    val last = items(items.length-1)
+    println(last)
+    last.replaceAll("\\$", "")
   }
 
   def getName(): String = escapeClassName(this.getClass.getName)
@@ -39,14 +45,14 @@ object TpchQuery {
       df.collect().foreach(println)
     else
       //df.write.mode("overwrite").json(outputDir + "/" + className + ".out") // json to avoid alias
-      df.write.mode("overwrite").format("com.databricks.spark.csv").option("header", "true").save(outputDir + "/" + className)
+      df.write.mode("overwrite").format("csv").option("header", "true").save(outputDir + "/" + className)
   }
 
-  def executeQueries(sc: SparkContext, schemaProvider: TpchSchemaProvider, queryNum: Int): ListBuffer[(String, Float)] = {
+  def executeQueries(sc: SparkContext, 
+                     schemaProvider: TpchSchemaProvider, 
+                     queryNum: Int): ListBuffer[(String, Float)] = {
 
-    // if set write results to hdfs, if null write to stdout
-    // val OUTPUT_DIR: String = "/tpch"
-    val OUTPUT_DIR: String = "file://" + new File(".").getAbsolutePath() + "/dbgen/output"
+    val OUTPUT_DIR: String = "file:///build/tpch-test-output"
 
     val results = new ListBuffer[(String, Float)]
 
@@ -60,7 +66,8 @@ object TpchQuery {
     for (queryNo <- fromNum to toNum) {
       val t0 = System.nanoTime()
 
-      val query = Class.forName(f"main.scala.Q${queryNo}%02d").newInstance.asInstanceOf[TpchQuery]
+      val query = Class.forName(f"main.scala.Q${queryNo}%02d")
+                       .newInstance.asInstanceOf[TpchQuery]
 
       outputDF(query.execute(sc, schemaProvider), OUTPUT_DIR, query.getName())
 
@@ -74,33 +81,126 @@ object TpchQuery {
     return results
   }
 
-  def main(args: Array[String]): Unit = {
+  case class Config(
+    start: Int = 0,
+    var end: Int = -1,
+    var fileType: FileType = CSV,
+    test: String = "csv",
+    var init: Boolean = false,
+    s3Select: Boolean = false,
+    kwargs: Map[String, String] = Map())
+  
+  val maxTests = 22
+  def parseArgs(args: Array[String]): Config = {
+  
+    val builder = OParser.builder[Config]
+    val parser1 = {
+      import builder._
+      OParser.sequence(
+        programName("TCPH Benchmark"),
+        head("tpch-test", "0.1"),
+        // option -f, --foo
+        opt[Int]('s', "start")
+          .action((x, c) => c.copy(start = x.toInt))
+          .text("start test number"),
+        opt[String]("test")
+          .required
+          .action((x, c) => c.copy(test = x))
+          .text("test to run (csv, tbl, init"),
+        opt[Unit]("s3Select")
+          .action((x, c) => c.copy(s3Select = true))
+          .text("Enable s3Select pushdown, default is disabled."),
+      )
+    }
+    // OParser.parse returns Option[Config]
+    val config = OParser.parse(parser1, args, Config())
+            
+    config match {
+        case Some(config) => 
+          println("args are good")
 
-    var queryNum = 0;
-    if (args.length > 0)
-      queryNum = args(0).toInt
-
+          config.test match {
+            case "csv" => config.fileType = CSV
+            case "tbl" => config.fileType = TBL
+            case "init" => {
+              config.init = true
+              config.fileType = TBL
+            }
+          }
+          config.end = config.start
+          config
+        case _ =>
+          // arguments are bad, error message will have been displayed
+          System.exit(1)
+          new Config
+      }
+  }
+  val inputTblPath = "file:///build/tpch-data"
+  def benchmark(config: Config): Unit = {
+        
     val conf = new SparkConf().setAppName("Simple Application")
     val sc = new SparkContext(conf)
 
     // read files from local FS
-    val INPUT_DIR = "file://" + new File(".").getAbsolutePath() + "/dbgen"
+    val inputPath = if (config.test == "csv") "s3a://tpch-test" else inputTblPath
 
-    // read from hdfs
-    // val INPUT_DIR: String = "/dbgen"
+    val schemaProvider = new TpchSchemaProvider(sc, inputPath, 
+                                                config.s3Select, config.fileType)
+    for (i <- config.start to config.end) {
+      val output = new ListBuffer[(String, Float)]
+      output ++= executeQueries(sc, schemaProvider, i)
 
-    val schemaProvider = new TpchSchemaProvider(sc, INPUT_DIR)
+      val outFile = new File("TIMES" + i + ".txt")
+      val bw = new BufferedWriter(new FileWriter(outFile, true))
 
-    val output = new ListBuffer[(String, Float)]
-    output ++= executeQueries(sc, schemaProvider, queryNum)
+      output.foreach {
+        case (key, value) => bw.write(f"${key}%s\t${value}%1.8f\n")
+      }
 
-    val outFile = new File("TIMES.txt")
-    val bw = new BufferedWriter(new FileWriter(outFile, true))
-
-    output.foreach {
-      case (key, value) => bw.write(f"${key}%s\t${value}%1.8f\n")
+      bw.close()
     }
+  }
 
-    bw.close()
+  def init(config: Config): Unit = {
+        
+    val conf = new SparkConf().setAppName("Simple Application")
+    val sc = new SparkContext(conf)
+
+    val schemaProvider = new TpchSchemaProvider(sc, inputTblPath, 
+                                                config.s3Select, config.fileType)
+
+    for ((name, df) <- schemaProvider.dfMap) {
+      val outputFolder = "/build/tpch-data/" + name + "raw"
+      df.repartition(1)
+        .write
+        .option("header", true)
+        .format("csv")
+        .save(outputFolder)
+
+      val fs = FileSystem.get(sc.hadoopConfiguration)
+      val file = fs.globStatus(new Path(outputFolder + "/part-0000*"))(0).getPath().getName()
+      println("\n\n\n\nfound " + file)
+      println(outputFolder + "/" + file + "->" + "/build/tpch-data/" + name + ".csv")
+      fs.rename(new Path(outputFolder + "/" + file), new Path("/build/tpch-data/" + name + ".csv"))
+      println("Finished writing " + name + ".csv")
+    }
+    println("Finished converting *.tbl to *.csv")
+  }
+
+  def main(args: Array[String]): Unit = {
+
+    var s3Select = false;
+    val config = parseArgs(args) 
+    println("s3Select: " + config.s3Select)
+    println("test: " + config.test)
+    println("fileType: " + config.fileType)
+    println("start: " + config.start)
+    println("end: " + config.end)
+    
+    if (config.test == "init") {
+      init(config)
+    } else {
+      benchmark(config)
+    }
   }
 }
