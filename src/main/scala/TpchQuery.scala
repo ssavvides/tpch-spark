@@ -80,7 +80,7 @@ object TpchQuery {
     if (args.length > 0)
       queryNum = args(0).toInt
 
-    val conf = new SparkConf().setAppName("Simple Application")
+    val conf = new SparkConf().setAppName("Spark App")
     val sc = new SparkContext(conf)
 
     // read files from local FS
