@@ -5,7 +5,7 @@ Tested under Spark 2.4.0
 
 Savvas Savvides
 
-savvas@purdue.edu
+sa.savvides@gmail.com
 
 
 ### Generating tables
