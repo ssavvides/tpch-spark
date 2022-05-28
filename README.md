@@ -1,63 +1,149 @@
 # tpch-spark
 
 TPC-H queries implemented in Spark using the DataFrames API.
-Tested under Spark 2.4.0
 
-Savvas Savvides
-
-sa.savvides@gmail.com
+> The TPC-H is a decision support benchmark. It consists of a suite of business oriented ad-hoc queries and concurrent data modifications. The queries and the data populating the database have been chosen to have broad industry-wide relevance. This benchmark illustrates decision support systems that examine large volumes of data, execute queries with a high degree of complexity, and give answers to critical business questions. The performance metric reported by TPC-H is called the TPC-H Composite Query-per-Hour Performance Metric (QphH@Size), and reflects multiple aspects of the capability of the system to process queries. These aspects include the selected database size against which the queries are executed, the query processing power when queries are submitted by a single stream, and the query throughput when queries are submitted by multiple concurrent users. The TPC-H Price/Performance metric is expressed as Price/QphH@Size for Version 2 and Price/kQphH@Size for Version 3.  
+-- https://www.tpc.org/tpch
 
 
-### Generating tables
+---
 
-Under the dbgen directory do:
+
+## Getting started
+
+### Prerequisites: Apache Spark
+
+`tpch-spark` requires that Spark is installed on your machine. You can download Spark from https://spark.apache.org/downloads.html. At a high level, to install Spark you have to:
+
+```bash
+# Step 1:
+tar xvfz <the tgz file you downloaded>
+
+# Step 2:
+# [optionally move/rename the untarred directory wherever you want, say, $HOME/spark]
+
+# Step 3:
+export PATH=$PATH:$HOME/spark/bin
+# or better yet, add the above to your bashrc (or equivalent) and source it.
 ```
+
+
+
+### A. Get the code
+
+```
+git clone https://github.com/ssavvides/tpch-spark
+cd tpch-spark
+```
+
+
+### B. Generate input data tables
+
+Navigate to the data generator directory `dbgen` and build the data generator:
+
+```
+cd dbgen
 make
 ```
 
-This should generate an executable called `dbgen`
+This should generate an executable called `dbgen`. Use the `-h` flag to see the various options the tool offers.
+
 ```
 ./dbgen -h
 ```
 
-gives you the various options for generating the tables. The simplest case is running:
+The simplest case is running the `dbgen` executable with no flags.
+
 ```
 ./dbgen
 ```
-which generates tables with extension `.tbl` with scale 1 (default) for a total of rougly 1GB size across all tables. For different size tables you can use the `-s` option:
+
+The above generates tables with extension `.tbl` with scale 1 (default) for a total of roughly 1GB size across all tables.
+
+```bash
+$ ls -hl *.tbl
+-rw-rw-r-- 1 savvas savvas  24M May 28 12:39 customer.tbl
+-rw-rw-r-- 1 savvas savvas 725M May 28 12:39 lineitem.tbl
+-rw-rw-r-- 1 savvas savvas 2.2K May 28 12:39 nation.tbl
+-rw-rw-r-- 1 savvas savvas 164M May 28 12:39 orders.tbl
+-rw-rw-r-- 1 savvas savvas 114M May 28 12:39 partsupp.tbl
+-rw-rw-r-- 1 savvas savvas  24M May 28 12:39 part.tbl
+-rw-rw-r-- 1 savvas savvas  389 May 28 12:39 region.tbl
+-rw-rw-r-- 1 savvas savvas 1.4M May 28 12:39 supplier.tbl
+```
+
+For different size tables you can use the `-s` (scale) option. For example,
+
 ```
 ./dbgen -s 10
 ```
+
 will generate roughly 10GB of input data.
 
-You can then either upload your data to hdfs or read them locally.
+Note that by default, `dbgen` uses a `|` as a column separator, and includes a `|` at the end of each entry.
 
-### Running
-
-First compile using:
-
+```bash
+$ cat region.tbl 
+0|AFRICA|lar deposits. blithely final packages cajole. regular waters are final requests. regular accounts are according to |
+1|AMERICA|hs use ironic, even requests. s|
+2|ASIA|ges. thinly even pinto beans ca|
+3|EUROPE|ly final courts cajole furiously final excuse|
+4|MIDDLE EAST|uickly special accounts cajole carefully blithely close requests. carefully final asymptotes haggle furiousl|
 ```
+
+You can find the schemas of the generated tables in the [TPC-H specification](./tpch-v3.0.0-specification.pdf)
+
+
+### C. Build `tpch-spark`
+
+`tpch-spark` is written in Scala as a [self-contained Spark application](https://spark.apache.org/docs/latest/quick-start.html#self-contained-applications).
+
+Use the provided `sbt` file to build `tpch-spark` as a spark application.
+
+```bash
+cd tpch-spark
 sbt package
 ```
 
-Make sure you set the INPUT_DIR and OUTPUT_DIR in `TpchQuery` class before compiling to point to the
-location the of the input data and where the output should be saved.
+The above command will package the application into a jar file, e.g., `target/scala-2.12/spark-tpc-h-queries_2.12-1.0.jar` which you will be needing in the next step.
 
-You can then run a query using:
+### D. Run `tpch-spark`
+
+You can run all TPC-H queries from Q01 to Q22 by running:
 
 ```
-spark-submit --class "main.scala.TpchQuery" --master MASTER target/scala-2.11/spark-tpc-h-queries_2.11-1.0.jar ##
+spark-submit --class "main.scala.TpchQuery" target/scala-2.12/spark-tpc-h-queries_2.12-1.0.jar
 ```
 
-where ## is the number of the query to run e.g 1, 2, ..., 22
-and MASTER specifies the spark-mode e.g local, yarn, standalone etc...
+If you want to run a specific query you can use 
+```
+spark-submit --class "main.scala.TpchQuery" target/scala-2.12/spark-tpc-h-queries_2.12-1.0.jar <query number>
+```
+
+where `<query number>` is the number of the query to run, i.e., 1, 2, ..., 22.
+
+N.B.: By default, `tpch-spark` will look for the input data files (the `*.tbl` files generated by `dbgen`) in `"<current working directory>/dbgen"`. You can point to another location by setting the environment variable `TPCH_INPUT_DATA_DIR`. By default, the query results will be stored in `"${TPCH_INPUT_DATA_DIR}/output/{Q01, Q02, ...}`, or to whatever location `TPCH_QUERY_OUTPUT_DIR` is set. The execution times for each query run will be stored in a file with path `"<current working directory>/tpch_execution_times.txt"` or to whatever file path `TPCH_EXECUTION_TIMES` points to. 
+
+For example, to replace the default locations you can use:
+
+```bash
+export TPCH_INPUT_DATA_DIR="$HOME/tpch-data"
+export TPCH_QUERY_OUTPUT_DIR="$HOME/tpch-results"
+export TPCH_EXECUTION_TIMES="$HOME/tpch-times.txt"
+```
+
+---
 
 
-
-### Other Implementations
+## Other Implementations
 
 1. Data generator (http://www.tpc.org/tpch/)
 
 2. TPC-H for Hive (https://issues.apache.org/jira/browse/hive-600)
 
 3. TPC-H for PIG (https://github.com/ssavvides/tpch-pig)
+
+
+## Contact
+
+Savvas Savvides <sa.savvides@gmail.com>

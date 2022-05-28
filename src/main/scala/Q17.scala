@@ -1,23 +1,12 @@
 package main.scala
 
-import org.apache.spark.sql.DataFrame
-import org.apache.spark.SparkContext
-import org.apache.spark.sql.functions.avg
-import org.apache.spark.sql.functions.sum
-import org.apache.spark.sql.functions.udf
+import org.apache.spark.sql._
+import org.apache.spark.sql.functions._
 
-/**
- * TPC-H Query 17
- * Savvas Savvides <savvas@purdue.edu>
- *
- */
 class Q17 extends TpchQuery {
 
-  override def execute(sc: SparkContext, schemaProvider: TpchSchemaProvider): DataFrame = {
-
-    // this is used to implicitly convert an RDD to a DataFrame.
-    val sqlContext = new org.apache.spark.sql.SQLContext(sc)
-    import sqlContext.implicits._
+  override def execute(spark: SparkSession, schemaProvider: TpchSchemaProvider): DataFrame = {
+    import spark.implicits._
     import schemaProvider._
 
     val mul02 = udf { (x: Double) => x * 0.2 }

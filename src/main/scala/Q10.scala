@@ -1,22 +1,12 @@
 package main.scala
 
-import org.apache.spark.sql.DataFrame
-import org.apache.spark.SparkContext
-import org.apache.spark.sql.functions.sum
-import org.apache.spark.sql.functions.udf
+import org.apache.spark.sql._
+import org.apache.spark.sql.functions._
 
-/**
- * TPC-H Query 10
- * Savvas Savvides <savvas@purdue.edu>
- *
- */
 class Q10 extends TpchQuery {
 
-  override def execute(sc: SparkContext, schemaProvider: TpchSchemaProvider): DataFrame = {
-
-    // this is used to implicitly convert an RDD to a DataFrame.
-    val sqlContext = new org.apache.spark.sql.SQLContext(sc)
-    import sqlContext.implicits._
+  override def execute(spark: SparkSession, schemaProvider: TpchSchemaProvider): DataFrame = {
+    import spark.implicits._
     import schemaProvider._
 
     val decrease = udf { (x: Double, y: Double) => x * (1 - y) }

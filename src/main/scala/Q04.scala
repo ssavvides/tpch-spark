@@ -1,21 +1,12 @@
 package main.scala
 
-import org.apache.spark.sql.DataFrame
-import org.apache.spark.SparkContext
-import org.apache.spark.sql.functions.count
+import org.apache.spark.sql._
+import org.apache.spark.sql.functions._
 
-/**
- * TPC-H Query 4
- * Savvas Savvides <savvas@purdue.edu>
- *
- */
 class Q04 extends TpchQuery {
 
-  override def execute(sc: SparkContext, schemaProvider: TpchSchemaProvider): DataFrame = {
-
-    // this is used to implicitly convert an RDD to a DataFrame.
-    val sqlContext = new org.apache.spark.sql.SQLContext(sc)
-    import sqlContext.implicits._
+  override def execute(spark: SparkSession, schemaProvider: TpchSchemaProvider): DataFrame = {
+    import spark.implicits._
     import schemaProvider._
 
     val forders = order.filter($"o_orderdate" >= "1993-07-01" && $"o_orderdate" < "1993-10-01")
