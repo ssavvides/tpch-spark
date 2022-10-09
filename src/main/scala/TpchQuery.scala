@@ -91,8 +91,11 @@ object TpchQuery {
       .getOrCreate()
     val schemaProvider = new TpchSchemaProvider(spark, inputDataDir)
 
-    // execute queries and write out execution times
+    // execute queries
     val executionTimes = executeQueries(spark, schemaProvider, queryNum, queryOutputDir)
+    spark.close()
+
+    // write execution times to file
     val outfile = new File(executionTimesPath)
     val bw = new BufferedWriter(new FileWriter(outfile, true))
     bw.write(f"Query\tTime(s)\n")
