@@ -2,14 +2,13 @@ package main.scala
 
 import java.io.{BufferedWriter, File, FileWriter}
 import scala.collection.mutable.ListBuffer
+import org.apache.log4j.LogManager
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
 /**
  * Parent class for TPC-H queries.
  *
  * Defines schemas for tables and reads pipe ("|") separated text files into these tables.
- *
- *
  */
 abstract class TpchQuery {
 
@@ -48,21 +47,28 @@ object TpchQuery {
       case None => {}
     }
 
-    val results = new ListBuffer[(String, Float)]
+    val executionTimes = new ListBuffer[(String, Float)]
     for (queryNo <- queryFrom to queryTo) {
       val startTime = System.nanoTime()
+      val query_name = f"main.scala.Q${queryNo}%02d"
 
-      val query = Class.forName(f"main.scala.Q${queryNo}%02d").newInstance.asInstanceOf[TpchQuery]
-      val queryOutput = query.execute(spark, schemaProvider)
-      outputDF(queryOutput, queryOutputDir, query.getName())
+      val log = LogManager.getRootLogger
 
-      val endTime = System.nanoTime()
+      try {
+        val query = Class.forName(query_name).newInstance.asInstanceOf[TpchQuery]
+        val queryOutput = query.execute(spark, schemaProvider)
+        outputDF(queryOutput, queryOutputDir, query.getName())
 
-      val elapsed = (endTime - startTime) / 1000000000.0f // to seconds
-      results += new Tuple2(query.getName(), elapsed)
+        val endTime = System.nanoTime()
+        val elapsed = (endTime - startTime) / 1000000000.0f // to seconds
+        executionTimes += new Tuple2(query.getName(), elapsed)
+      }
+      catch {
+        case e: Exception => log.warn(f"Failed to execute query ${query_name}: ${e}")
+      }
     }
 
-    return results
+    return executionTimes
   }
 
   def main(args: Array[String]): Unit = {
@@ -70,7 +76,7 @@ object TpchQuery {
     // if no query is given, all queries 1..22 are run.
     if (args.length > 1)
       println("Expected at most 1 argument: query to run. No arguments = run all 22 queries.")
-    var queryNum = if (args.length == 1) {
+    val queryNum = if (args.length == 1) {
       try {
         Some(Integer.parseInt(args(0).trim))
       } catch {
@@ -96,15 +102,19 @@ object TpchQuery {
     spark.close()
 
     // write execution times to file
-    val outfile = new File(executionTimesPath)
-    val bw = new BufferedWriter(new FileWriter(outfile, true))
-    bw.write(f"Query\tTime(s)\n")
-    executionTimes.foreach {
-      case (key, value) => bw.write(f"${key}%s\t${value}%1.8f\n")
+    if (executionTimes.length > 0) {
+      val outfile = new File(executionTimesPath)
+      val bw = new BufferedWriter(new FileWriter(outfile, true))
+
+      bw.write(f"Query\tTime (seconds)\n")
+      executionTimes.foreach {
+        case (key, value) => bw.write(f"${key}%s\t${value}%1.8f\n")
+      }
+      bw.close()
+
+      println(f"Execution times written in ${outfile}.")
     }
-    bw.close()
 
     println("Execution complete.")
-    println(f"Execution times written in ${outfile}.")
   }
 }
