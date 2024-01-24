@@ -1,123 +1,95 @@
 package main.scala
 
-import org.apache.spark.sql.SparkSession
-
-// TPC-H table schemas
-case class Customer(
-  c_custkey: Long,    // primary key
-  c_name: String,
-  c_address: String,
-  c_nationkey: Long,
-  c_phone: String,
-  c_acctbal: Double,
-  c_mktsegment: String,
-  c_comment: String)
-
-case class Lineitem(
-  l_orderkey: Long,   // primary key
-  l_partkey: Long,
-  l_suppkey: Long,
-  l_linenumber: Long, // primary key
-  l_quantity: Double,
-  l_extendedprice: Double,
-  l_discount: Double,
-  l_tax: Double,
-  l_returnflag: String,
-  l_linestatus: String,
-  l_shipdate: String,
-  l_commitdate: String,
-  l_receiptdate: String,
-  l_shipinstruct: String,
-  l_shipmode: String,
-  l_comment: String)
-
-case class Nation(
-  n_nationkey: Long,    // primary key
-  n_name: String,
-  n_regionkey: Long,
-  n_comment: String)
-
-case class Order(
-  o_orderkey: Long,   // primary key
-  o_custkey: Long,
-  o_orderstatus: String,
-  o_totalprice: Double,
-  o_orderdate: String,
-  o_orderpriority: String,
-  o_clerk: String,
-  o_shippriority: Long,
-  o_comment: String)
-
-case class Part(
-  p_partkey: Long,    // primary key
-  p_name: String,
-  p_mfgr: String,
-  p_brand: String,
-  p_type: String,
-  p_size: Long,
-  p_container: String,
-  p_retailprice: Double,
-  p_comment: String)
-
-case class Partsupp(
-  ps_partkey: Long,   // primary key
-  ps_suppkey: Long,   // primary key
-  ps_availqty: Long,
-  ps_supplycost: Double,
-  ps_comment: String)
-
-case class Region(
-  r_regionkey: Long,    // primary key
-  r_name: String,
-  r_comment: String)
-
-case class Supplier(
-  s_suppkey: Long,    // primary key
-  s_name: String,
-  s_address: String,
-  s_nationkey: Long,
-  s_phone: String,
-  s_acctbal: Double,
-  s_comment: String)
+import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.types.{DoubleType, LongType, StringType, StructField, StructType}
 
 class TpchSchemaProvider(spark: SparkSession, inputDir: String) {
-  import spark.implicits._
-
-  val dfMap = Map(
-    "customer" -> spark.read.textFile(inputDir + "/customer.tbl*").map(_.split('|')).map(p =>
-      Customer(p(0).trim.toLong, p(1).trim, p(2).trim, p(3).trim.toLong, p(4).trim, p(5).trim.toDouble, p(6).trim, p(7).trim)).toDF(),
-
-    "lineitem" -> spark.read.textFile(inputDir + "/lineitem.tbl*").map(_.split('|')).map(p =>
-      Lineitem(p(0).trim.toLong, p(1).trim.toLong, p(2).trim.toLong, p(3).trim.toLong, p(4).trim.toDouble, p(5).trim.toDouble, p(6).trim.toDouble, p(7).trim.toDouble, p(8).trim, p(9).trim, p(10).trim, p(11).trim, p(12).trim, p(13).trim, p(14).trim, p(15).trim)).toDF(),
-
-    "nation" -> spark.read.textFile(inputDir + "/nation.tbl*").map(_.split('|')).map(p =>
-      Nation(p(0).trim.toLong, p(1).trim, p(2).trim.toLong, p(3).trim)).toDF(),
-
-    "region" -> spark.read.textFile(inputDir + "/region.tbl*").map(_.split('|')).map(p =>
-      Region(p(0).trim.toLong, p(1).trim, p(2).trim)).toDF(),
-
-    "order" -> spark.read.textFile(inputDir + "/orders.tbl*").map(_.split('|')).map(p =>
-      Order(p(0).trim.toLong, p(1).trim.toLong, p(2).trim, p(3).trim.toDouble, p(4).trim, p(5).trim, p(6).trim, p(7).trim.toLong, p(8).trim)).toDF(),
-
-    "part" -> spark.read.textFile(inputDir + "/part.tbl*").map(_.split('|')).map(p =>
-      Part(p(0).trim.toLong, p(1).trim, p(2).trim, p(3).trim, p(4).trim, p(5).trim.toLong, p(6).trim, p(7).trim.toDouble, p(8).trim)).toDF(),
-
-    "partsupp" -> spark.read.textFile(inputDir + "/partsupp.tbl*").map(_.split('|')).map(p =>
-      Partsupp(p(0).trim.toLong, p(1).trim.toLong, p(2).trim.toLong, p(3).trim.toDouble, p(4).trim)).toDF(),
-
-    "supplier" -> spark.read.textFile(inputDir + "/supplier.tbl*").map(_.split('|')).map(p =>
-      Supplier(p(0).trim.toLong, p(1).trim, p(2).trim, p(3).trim.toLong, p(4).trim, p(5).trim.toDouble, p(6).trim)).toDF()
+  // TPC-H table schemas
+  private val dfSchemaMap = Map(
+    "customer" -> StructType(
+      StructField("c_custkey", LongType) :: // primary key
+        StructField("c_name", StringType) ::
+        StructField("c_address", StringType) ::
+        StructField("c_nationkey", LongType) ::
+        StructField("c_phone", StringType) ::
+        StructField("c_acctbal", DoubleType) ::
+        StructField("c_mktsegment", StringType) ::
+        StructField("c_comment", StringType) :: Nil),
+    "lineitem" -> StructType(
+      StructField("l_orderkey", LongType) :: // primary key
+        StructField("l_partkey", LongType) ::
+        StructField("l_suppkey", LongType) ::
+        StructField("l_linenumber", LongType) :: // primary key
+        StructField("l_quantity", DoubleType) ::
+        StructField("l_extendedprice", DoubleType) ::
+        StructField("l_discount", DoubleType) ::
+        StructField("l_tax", DoubleType) ::
+        StructField("l_returnflag", StringType) ::
+        StructField("l_linestatus", StringType) ::
+        StructField("l_shipdate", StringType) ::
+        StructField("l_commitdate", StringType) ::
+        StructField("l_receiptdate", StringType) ::
+        StructField("l_shipinstruct", StringType) ::
+        StructField("l_shipmode", StringType) ::
+        StructField("l_comment", StringType) :: Nil),
+    "nation" -> StructType(
+      StructField("n_nationkey", LongType) :: // primary key
+        StructField("n_name", StringType) ::
+        StructField("n_regionkey", LongType) ::
+        StructField("n_comment", StringType) :: Nil),
+    "orders" -> StructType(
+      StructField("o_orderkey", LongType) :: // primary key
+        StructField("o_custkey", LongType) ::
+        StructField("o_orderstatus", StringType) ::
+        StructField("o_totalprice", DoubleType) ::
+        StructField("o_orderdate", StringType) ::
+        StructField("o_orderpriority", StringType) ::
+        StructField("o_clerk", StringType) ::
+        StructField("o_shippriority", LongType) ::
+        StructField("o_comment", StringType) :: Nil),
+    "part" -> StructType(
+      StructField("p_partkey", LongType) :: // primary key
+        StructField("p_name", StringType) ::
+        StructField("p_mfgr", StringType) ::
+        StructField("p_brand", StringType) ::
+        StructField("p_type", StringType) ::
+        StructField("p_size", LongType) ::
+        StructField("p_container", StringType) ::
+        StructField("p_retailprice", DoubleType) ::
+        StructField("p_comment", StringType) :: Nil),
+    "partsupp" -> StructType(
+      StructField("ps_partkey", LongType) :: // primary key
+        StructField("ps_suppkey", LongType) :: // primary key
+        StructField("ps_availqty", LongType) ::
+        StructField("ps_supplycost", DoubleType) ::
+        StructField("ps_comment", StringType) :: Nil),
+    "region" -> StructType(
+      StructField("r_regionkey", LongType) :: // primary key
+        StructField("r_name", StringType) ::
+        StructField("r_comment", StringType) :: Nil),
+    "supplier" -> StructType(
+      StructField("s_suppkey", LongType) :: // primary key
+        StructField("s_name", StringType) ::
+        StructField("s_address", StringType) ::
+        StructField("s_nationkey", LongType) ::
+        StructField("s_phone", StringType) ::
+        StructField("s_acctbal", DoubleType) ::
+        StructField("s_comment", StringType) :: Nil)
   )
 
+  private val dfMap = dfSchemaMap.map {
+    case (name, schema) => (name, spark.read.schema(schema).option("delimiter", "|").csv(inputDir + s"/$name.tbl*"))
+  }
+
   // for implicits
-  val customer = dfMap.get("customer").get
-  val lineitem = dfMap.get("lineitem").get
-  val nation = dfMap.get("nation").get
-  val region = dfMap.get("region").get
-  val order = dfMap.get("order").get
-  val part = dfMap.get("part").get
-  val partsupp = dfMap.get("partsupp").get
-  val supplier = dfMap.get("supplier").get
+  val customer: DataFrame = dfMap("customer")
+  val lineitem: DataFrame = dfMap("lineitem")
+  val nation: DataFrame = dfMap("nation")
+  val region: DataFrame = dfMap("region")
+  val order: DataFrame = dfMap("orders")
+  val part: DataFrame = dfMap("part")
+  val partsupp: DataFrame = dfMap("partsupp")
+  val supplier: DataFrame = dfMap("supplier")
 
   dfMap.foreach {
     case (key, value) => value.createOrReplaceTempView(key)
